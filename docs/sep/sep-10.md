@@ -11,6 +11,8 @@ SEP-10 defines how wallets prove account ownership to anchors and other services
 
 ## Quick Example
 
+This example demonstrates the simplest SEP-10 authentication flow: creating a WebAuth instance from the anchor's domain and obtaining a JWT token in a single call.
+
 ```php
 <?php
 
@@ -18,14 +20,15 @@ use Soneso\StellarSDK\Crypto\KeyPair;
 use Soneso\StellarSDK\Network;
 use Soneso\StellarSDK\SEP\WebAuth\WebAuth;
 
-// Create WebAuth from the anchor's domain
+// Create WebAuth from the anchor's domain - this automatically loads
+// the stellar.toml and extracts the WEB_AUTH_ENDPOINT and SIGNING_KEY
 $webAuth = WebAuth::fromDomain("testanchor.stellar.org", Network::testnet());
 
 // Get JWT token - handles challenge request, signing, and submission
 $userKeyPair = KeyPair::fromSeed("SCZANGBA5YHTNYVVV3C7CAZMTQDBJHJG6C34CJDQ66EQ7DZTPBRJFN4A");
 $jwtToken = $webAuth->jwtToken($userKeyPair->getAccountId(), [$userKeyPair]);
 
-// Use the token for authenticated requests
+// Use the token for authenticated requests to SEP-6, SEP-12, SEP-24, etc.
 echo "Authenticated! Token: " . substr($jwtToken, 0, 50) . "...";
 ```
 
@@ -33,7 +36,9 @@ echo "Authenticated! Token: " . substr($jwtToken, 0, 50) . "...";
 
 ### Creating WebAuth
 
-**From domain (recommended):**
+#### From Domain (Recommended)
+
+The preferred method loads configuration automatically from the anchor's stellar.toml file, ensuring you always have the correct endpoint and signing key.
 
 ```php
 <?php
@@ -45,7 +50,9 @@ use Soneso\StellarSDK\SEP\WebAuth\WebAuth;
 $webAuth = WebAuth::fromDomain("testanchor.stellar.org", Network::testnet());
 ```
 
-**Manual construction:**
+#### Manual Construction
+
+Use manual construction when you already have the endpoint and signing key, or when testing with custom configurations.
 
 ```php
 <?php
@@ -55,7 +62,7 @@ use Soneso\StellarSDK\SEP\WebAuth\WebAuth;
 
 $webAuth = new WebAuth(
     authEndpoint: "https://testanchor.stellar.org/auth",
-    serverSigningKey: "GCUZ6YLL...",
+    serverSigningKey: "GCUZ6YLL5RQBTYLTTQLPCM73C5XAIUGK2TIMWQH7HPSGWVS2KJ2F3CHS",
     serverHomeDomain: "testanchor.stellar.org",
     network: Network::testnet()
 );
@@ -63,7 +70,7 @@ $webAuth = new WebAuth(
 
 ### Standard Authentication
 
-For most cases, `jwtToken()` handles the entire flow:
+For most use cases, `jwtToken()` handles the entire SEP-10 flow: requesting a challenge, validating it, signing with your keypair(s), and obtaining the JWT token.
 
 ```php
 <?php
@@ -81,16 +88,16 @@ $jwtToken = $webAuth->jwtToken(
 );
 ```
 
-The method:
+The method performs these steps internally:
 1. Requests a challenge transaction from the server
-2. Validates the challenge (sequence number, signatures, time bounds)
+2. Validates the challenge (sequence number = 0, valid signatures, time bounds, operations)
 3. Signs with your keypair(s)
-4. Submits back to the server
+4. Submits the signed transaction to the server
 5. Returns the JWT token
 
 ### Multi-Signature Accounts
 
-For accounts requiring multiple signatures:
+For accounts requiring multiple signatures to meet the authentication threshold, provide all required signers. The combined signature weight must satisfy the server's requirements.
 
 ```php
 <?php
@@ -101,9 +108,9 @@ use Soneso\StellarSDK\SEP\WebAuth\WebAuth;
 
 $webAuth = WebAuth::fromDomain("testanchor.stellar.org", Network::testnet());
 
-// All signers needed to meet the account's threshold
-$signer1 = KeyPair::fromSeed("SCZANGBA5YHTNYVVV3C7CAZMTQDBJHJG...");
-$signer2 = KeyPair::fromSeed("SBGWSG6BTNCKCOB3DIFBGCVMUPQFYPA...");
+// Provide all signers needed to meet the account's threshold
+$signer1 = KeyPair::fromSeed("SCZANGBA5YHTNYVVV3C7CAZMTQDBJHJG6C34CJDQ66EQ7DZTPBRJFN4A");
+$signer2 = KeyPair::fromSeed("SBGWSG6BTNCKCOB3DIFBGCVMUPQFYPA2HIF74DBGCZ6V5CSBRROPGKVZ");
 
 $jwtToken = $webAuth->jwtToken(
     clientAccountId: $signer1->getAccountId(),
@@ -113,7 +120,7 @@ $jwtToken = $webAuth->jwtToken(
 
 ### Muxed Accounts
 
-Muxed accounts (M... addresses) work directly:
+Muxed accounts (M... addresses) bundle a user ID with a G... account, allowing services to distinguish between multiple users sharing the same Stellar account.
 
 ```php
 <?php
@@ -124,18 +131,20 @@ use Soneso\StellarSDK\Network;
 use Soneso\StellarSDK\SEP\WebAuth\WebAuth;
 
 $webAuth = WebAuth::fromDomain("testanchor.stellar.org", Network::testnet());
-$userKeyPair = KeyPair::fromSeed("SCZANGBA5YHTNYVVV3C7CAZMTQDBJHJG...");
+$userKeyPair = KeyPair::fromSeed("SCZANGBA5YHTNYVVV3C7CAZMTQDBJHJG6C34CJDQ66EQ7DZTPBRJFN4A");
 
-// Create muxed account with user ID
+// Create muxed account with user ID embedded in the address
 $muxedAccount = new MuxedAccount($userKeyPair->getAccountId(), 1234567890);
 
 $jwtToken = $webAuth->jwtToken(
-    clientAccountId: $muxedAccount->getAccountId(), // M... address
+    clientAccountId: $muxedAccount->getAccountId(), // Returns M... address
     signers: [$userKeyPair]
 );
 ```
 
-For G... accounts with memo-based user separation:
+#### Memo-Based User Separation
+
+For services that use memos instead of muxed accounts to identify users sharing a single Stellar account, pass the memo as a separate parameter.
 
 ```php
 <?php
@@ -145,18 +154,24 @@ use Soneso\StellarSDK\Network;
 use Soneso\StellarSDK\SEP\WebAuth\WebAuth;
 
 $webAuth = WebAuth::fromDomain("testanchor.stellar.org", Network::testnet());
-$userKeyPair = KeyPair::fromSeed("SCZANGBA5YHTNYVVV3C7CAZMTQDBJHJG...");
+$userKeyPair = KeyPair::fromSeed("SCZANGBA5YHTNYVVV3C7CAZMTQDBJHJG6C34CJDQ66EQ7DZTPBRJFN4A");
 
 $jwtToken = $webAuth->jwtToken(
     clientAccountId: $userKeyPair->getAccountId(),
     signers: [$userKeyPair],
-    memo: 1234567890  // User ID memo
+    memo: 1234567890  // User ID memo (must be integer)
 );
 ```
 
+> **Note:** You cannot use both a muxed account (M...) and a memo simultaneously. The SDK will throw an `InvalidArgumentException` if you attempt this.
+
 ### Client Attribution (Non-Custodial Wallets)
 
-Wallets can prove their identity to anchors using client domain verification:
+Client domain verification allows wallets to prove their identity to anchors, enabling anchors to provide different experiences for users coming from known, trusted wallets.
+
+#### Local Signing
+
+When the wallet has direct access to its signing key, provide the keypair directly. The wallet's stellar.toml must include a `SIGNING_KEY` that matches the provided keypair.
 
 ```php
 <?php
@@ -167,8 +182,8 @@ use Soneso\StellarSDK\SEP\WebAuth\WebAuth;
 
 $webAuth = WebAuth::fromDomain("testanchor.stellar.org", Network::testnet());
 
-$userKeyPair = KeyPair::fromSeed("SCZANGBA5YHTNYVVV3C7CAZMTQDBJHJG...");
-$clientDomainKeyPair = KeyPair::fromSeed("SBGWSG6BTNCKCOB3DIFBGCVMUPQFYPA...");
+$userKeyPair = KeyPair::fromSeed("SCZANGBA5YHTNYVVV3C7CAZMTQDBJHJG6C34CJDQ66EQ7DZTPBRJFN4A");
+$clientDomainKeyPair = KeyPair::fromSeed("SBGWSG6BTNCKCOB3DIFBGCVMUPQFYPA2HIF74DBGCZ6V5CSBRROPGKVZ");
 
 $jwtToken = $webAuth->jwtToken(
     clientAccountId: $userKeyPair->getAccountId(),
@@ -178,34 +193,51 @@ $jwtToken = $webAuth->jwtToken(
 );
 ```
 
-The wallet's stellar.toml must have the `SIGNING_KEY` that matches `clientDomainKeyPair`.
+#### Remote Signing Callback
 
-**Remote signing callback** (when the client domain key isn't available locally):
+When the client domain signing key is stored on a separate server (recommended for security), use a callback to delegate signing. This is the production-recommended approach.
 
 ```php
 <?php
 
+use Exception;
+use GuzzleHttp\Client;
 use Soneso\StellarSDK\Crypto\KeyPair;
 use Soneso\StellarSDK\Network;
 use Soneso\StellarSDK\SEP\WebAuth\WebAuth;
 
 $webAuth = WebAuth::fromDomain("testanchor.stellar.org", Network::testnet());
-$userKeyPair = KeyPair::fromSeed("SCZANGBA5YHTNYVVV3C7CAZMTQDBJHJG...");
+$userKeyPair = KeyPair::fromSeed("SCZANGBA5YHTNYVVV3C7CAZMTQDBJHJG6C34CJDQ66EQ7DZTPBRJFN4A");
+
+// Callback receives base64-encoded transaction XDR and must return signed XDR
+$signingCallback = function(string $transactionXdr): string {
+    $httpClient = new Client();
+    $response = $httpClient->post('https://signing-server.mywallet.com/sign', [
+        'json' => [
+            'transaction' => $transactionXdr,
+            'network_passphrase' => 'Test SDF Network ; September 2015'
+        ],
+        'headers' => ['Authorization' => 'Bearer YOUR_API_TOKEN']
+    ]);
+    
+    $data = json_decode($response->getBody()->getContents(), true);
+    if (!isset($data['transaction'])) {
+        throw new Exception("Invalid signing server response");
+    }
+    return $data['transaction'];
+};
 
 $jwtToken = $webAuth->jwtToken(
     clientAccountId: $userKeyPair->getAccountId(),
     signers: [$userKeyPair],
     clientDomain: "mywallet.com",
-    clientDomainSigningCallback: function(string $transactionXdr): string {
-        // Send to your signing server and return signed XDR
-        return $yourSigningService->sign($transactionXdr);
-    }
+    clientDomainSigningCallback: $signingCallback
 );
 ```
 
 ### Multiple Home Domains
 
-When an anchor serves multiple domains:
+When an anchor serves multiple domains from the same authentication server, specify which domain the challenge should be issued for.
 
 ```php
 <?php
@@ -215,7 +247,7 @@ use Soneso\StellarSDK\Network;
 use Soneso\StellarSDK\SEP\WebAuth\WebAuth;
 
 $webAuth = WebAuth::fromDomain("testanchor.stellar.org", Network::testnet());
-$userKeyPair = KeyPair::fromSeed("SCZANGBA5YHTNYVVV3C7CAZMTQDBJHJG...");
+$userKeyPair = KeyPair::fromSeed("SCZANGBA5YHTNYVVV3C7CAZMTQDBJHJG6C34CJDQ66EQ7DZTPBRJFN4A");
 
 $jwtToken = $webAuth->jwtToken(
     clientAccountId: $userKeyPair->getAccountId(),
@@ -226,6 +258,8 @@ $jwtToken = $webAuth->jwtToken(
 
 ## Error Handling
 
+The SDK provides specific exception types for different failure scenarios, allowing precise error handling and appropriate user feedback.
+
 ```php
 <?php
 
@@ -234,64 +268,246 @@ use Soneso\StellarSDK\Network;
 use Soneso\StellarSDK\SEP\WebAuth\WebAuth;
 use Soneso\StellarSDK\SEP\WebAuth\ChallengeRequestErrorResponse;
 use Soneso\StellarSDK\SEP\WebAuth\ChallengeValidationError;
+use Soneso\StellarSDK\SEP\WebAuth\ChallengeValidationErrorInvalidHomeDomain;
+use Soneso\StellarSDK\SEP\WebAuth\ChallengeValidationErrorInvalidMemoType;
+use Soneso\StellarSDK\SEP\WebAuth\ChallengeValidationErrorInvalidMemoValue;
+use Soneso\StellarSDK\SEP\WebAuth\ChallengeValidationErrorInvalidOperationType;
 use Soneso\StellarSDK\SEP\WebAuth\ChallengeValidationErrorInvalidSeqNr;
 use Soneso\StellarSDK\SEP\WebAuth\ChallengeValidationErrorInvalidSignature;
+use Soneso\StellarSDK\SEP\WebAuth\ChallengeValidationErrorInvalidSourceAccount;
 use Soneso\StellarSDK\SEP\WebAuth\ChallengeValidationErrorInvalidTimeBounds;
+use Soneso\StellarSDK\SEP\WebAuth\ChallengeValidationErrorInvalidWebAuthDomain;
+use Soneso\StellarSDK\SEP\WebAuth\ChallengeValidationErrorMemoAndMuxedAccount;
 use Soneso\StellarSDK\SEP\WebAuth\SubmitCompletedChallengeErrorResponseException;
+use Soneso\StellarSDK\SEP\WebAuth\SubmitCompletedChallengeTimeoutResponseException;
+use Soneso\StellarSDK\SEP\WebAuth\SubmitCompletedChallengeUnknownResponseException;
+use InvalidArgumentException;
 
 try {
     $webAuth = WebAuth::fromDomain("testanchor.stellar.org", Network::testnet());
-    $userKeyPair = KeyPair::fromSeed("SCZANGBA5YHTNYVVV3C7CAZMTQDBJHJG...");
+    $userKeyPair = KeyPair::fromSeed("SCZANGBA5YHTNYVVV3C7CAZMTQDBJHJG6C34CJDQ66EQ7DZTPBRJFN4A");
     
     $jwtToken = $webAuth->jwtToken($userKeyPair->getAccountId(), [$userKeyPair]);
     
+} catch (InvalidArgumentException $e) {
+    // Invalid parameters (e.g., memo with muxed account, missing client domain keypair)
+    echo "Invalid parameters: " . $e->getMessage();
+    
 } catch (ChallengeRequestErrorResponse $e) {
-    // Server rejected the challenge request
+    // Server rejected the challenge request (HTTP error from auth endpoint)
     echo "Challenge request failed: " . $e->getMessage();
     
 } catch (ChallengeValidationErrorInvalidSeqNr $e) {
-    // SECURITY: Challenge has non-zero sequence number
+    // CRITICAL SECURITY: Challenge has non-zero sequence number
     // This could indicate a malicious server trying to get you to sign a real transaction
-    echo "Security error: Invalid sequence number";
+    echo "Security error: Invalid sequence number - DO NOT PROCEED";
     
 } catch (ChallengeValidationErrorInvalidSignature $e) {
-    // Challenge wasn't properly signed by the server
-    echo "Invalid server signature";
+    // Challenge wasn't properly signed by the server's signing key
+    echo "Invalid server signature - check stellar.toml SIGNING_KEY";
     
 } catch (ChallengeValidationErrorInvalidTimeBounds $e) {
-    // Challenge expired or time bounds invalid
+    // Challenge expired or time bounds invalid - request a new one
     echo "Challenge expired or invalid time bounds";
     
+} catch (ChallengeValidationErrorInvalidHomeDomain $e) {
+    // First operation's data key doesn't match expected "domain auth" format
+    echo "Invalid home domain in challenge";
+    
+} catch (ChallengeValidationErrorInvalidWebAuthDomain $e) {
+    // web_auth_domain operation value doesn't match the auth endpoint host
+    echo "Invalid web auth domain";
+    
+} catch (ChallengeValidationErrorInvalidSourceAccount $e) {
+    // Operation source account is incorrect (first op must be client, others must be server)
+    echo "Invalid source account in challenge operation";
+    
+} catch (ChallengeValidationErrorInvalidOperationType $e) {
+    // Challenge contains non-ManageData operations (security risk)
+    echo "Invalid operation type - all operations must be ManageData";
+    
+} catch (ChallengeValidationErrorInvalidMemoType $e) {
+    // Memo must be MEMO_NONE or MEMO_ID
+    echo "Invalid memo type";
+    
+} catch (ChallengeValidationErrorInvalidMemoValue $e) {
+    // Memo value doesn't match the requested memo
+    echo "Memo value mismatch";
+    
+} catch (ChallengeValidationErrorMemoAndMuxedAccount $e) {
+    // Challenge has both memo and muxed account (invalid per SEP-10)
+    echo "Cannot have both memo and muxed account";
+    
 } catch (ChallengeValidationError $e) {
-    // Other validation errors (home domain, web auth domain, etc.)
+    // Base class for other validation errors
     echo "Challenge validation failed: " . $e->getMessage();
     
 } catch (SubmitCompletedChallengeErrorResponseException $e) {
-    // Server rejected the signed challenge
+    // Server rejected the signed challenge (e.g., insufficient signers, invalid signatures)
     echo "Authentication failed: " . $e->getMessage();
+    
+} catch (SubmitCompletedChallengeTimeoutResponseException $e) {
+    // Server returned 504 Gateway Timeout - retry with backoff
+    echo "Server timeout - please retry";
+    
+} catch (SubmitCompletedChallengeUnknownResponseException $e) {
+    // Unexpected HTTP response from server
+    echo "Unexpected server response: " . $e->getMessage();
 }
 ```
 
-### Common Errors
+### Exception Reference
 
 | Exception | Cause | Solution |
 |-----------|-------|----------|
-| `ChallengeValidationErrorInvalidSeqNr` | Sequence number ≠ 0 | **Security risk** - don't proceed |
-| `ChallengeValidationErrorInvalidSignature` | Bad server signature | Check stellar.toml SIGNING_KEY |
+| `InvalidArgumentException` | Invalid method parameters | Check parameters (no memo with M... account) |
+| `ChallengeRequestErrorResponse` | Server rejected challenge request | Check account ID format, server status |
+| `ChallengeValidationErrorInvalidSeqNr` | Sequence number ≠ 0 | **Security risk** - do not proceed |
+| `ChallengeValidationErrorInvalidSignature` | Bad server signature | Verify stellar.toml SIGNING_KEY |
 | `ChallengeValidationErrorInvalidTimeBounds` | Challenge expired | Request a new challenge |
-| `SubmitCompletedChallengeErrorResponseException` | Insufficient signers | Provide more signers |
+| `ChallengeValidationErrorInvalidHomeDomain` | Wrong home domain | Check domain configuration |
+| `ChallengeValidationErrorInvalidWebAuthDomain` | Wrong web auth domain | Verify auth endpoint URL |
+| `ChallengeValidationErrorInvalidSourceAccount` | Wrong operation source | Server configuration issue |
+| `ChallengeValidationErrorInvalidOperationType` | Non-ManageData operation | **Security risk** - server may be malicious |
+| `ChallengeValidationErrorInvalidMemoType` | Memo not NONE or ID | Server configuration issue |
+| `ChallengeValidationErrorInvalidMemoValue` | Memo mismatch | Check memo parameter matches server |
+| `ChallengeValidationErrorMemoAndMuxedAccount` | Both memo and M... address | Use one or the other, not both |
+| `SubmitCompletedChallengeErrorResponseException` | Signed challenge rejected | Provide sufficient signers |
+| `SubmitCompletedChallengeTimeoutResponseException` | Server timeout (504) | Retry with exponential backoff |
+| `SubmitCompletedChallengeUnknownResponseException` | Unexpected HTTP response | Check server logs, contact support |
+
+### Retry Logic Example
+
+For production applications, implement retry logic with exponential backoff for transient failures.
+
+```php
+<?php
+
+use Exception;
+use Soneso\StellarSDK\Crypto\KeyPair;
+use Soneso\StellarSDK\Network;
+use Soneso\StellarSDK\SEP\WebAuth\WebAuth;
+use Soneso\StellarSDK\SEP\WebAuth\ChallengeValidationErrorInvalidTimeBounds;
+use Soneso\StellarSDK\SEP\WebAuth\SubmitCompletedChallengeTimeoutResponseException;
+
+/**
+ * Authenticates with automatic retry for transient failures.
+ *
+ * @param WebAuth $webAuth The WebAuth instance
+ * @param string $accountId The account to authenticate
+ * @param array<KeyPair> $signers The keypairs to sign with
+ * @param int $maxRetries Maximum retry attempts (default: 3)
+ * @return string JWT token on success
+ * @throws Exception When all retries are exhausted
+ */
+function authenticateWithRetry(
+    WebAuth $webAuth,
+    string $accountId,
+    array $signers,
+    int $maxRetries = 3
+): string {
+    $attempt = 0;
+    $lastException = null;
+    
+    while ($attempt < $maxRetries) {
+        try {
+            return $webAuth->jwtToken($accountId, $signers);
+            
+        } catch (ChallengeValidationErrorInvalidTimeBounds $e) {
+            // Challenge expired - retry immediately with fresh challenge
+            $attempt++;
+            $lastException = $e;
+            
+        } catch (SubmitCompletedChallengeTimeoutResponseException $e) {
+            // Server timeout - retry with exponential backoff
+            $attempt++;
+            $lastException = $e;
+            sleep(pow(2, $attempt)); // 2, 4, 8 seconds
+        }
+    }
+    
+    throw $lastException ?? new Exception("Authentication failed after $maxRetries attempts");
+}
+
+// Usage
+$webAuth = WebAuth::fromDomain("testanchor.stellar.org", Network::testnet());
+$userKeyPair = KeyPair::fromSeed("SCZANGBA5YHTNYVVV3C7CAZMTQDBJHJG6C34CJDQ66EQ7DZTPBRJFN4A");
+
+$jwtToken = authenticateWithRetry($webAuth, $userKeyPair->getAccountId(), [$userKeyPair]);
+```
 
 ## Security Notes
 
-1. **Sequence number must be 0** - Non-zero means the transaction could execute on-chain. Never sign challenges with non-zero sequence numbers.
+1. **Sequence number must be 0** - A non-zero sequence number means the transaction could execute on-chain. Never sign challenges with non-zero sequence numbers. The SDK validates this automatically and throws `ChallengeValidationErrorInvalidSeqNr`.
 
-2. **Verify server signature** - The challenge must be signed by the server's key from stellar.toml.
+2. **Verify server signature** - The challenge must be signed by the server's signing key from stellar.toml. This prevents man-in-the-middle attacks. The SDK validates this automatically.
 
-3. **Check time bounds** - Expired challenges may be replay attacks.
+3. **Operations must be ManageData** - All operations in the challenge must be ManageData type. Other operation types could perform unintended actions. The SDK validates this automatically.
 
-4. **Store tokens securely** - JWT tokens grant access to protected services. Don't log them or expose in URLs.
+4. **Check time bounds** - Expired challenges may be replay attacks. The SDK validates time bounds with a 5-minute grace period to account for clock drift.
 
-5. **Use HTTPS** - All SEP-10 communication should use HTTPS.
+5. **Store tokens securely** - JWT tokens grant access to protected services. Don't log them, expose them in URLs, or store them insecurely. Respect token expiration times.
+
+6. **Use HTTPS** - All SEP-10 communication should use HTTPS to prevent interception.
+
+7. **Home domain validation** - The challenge's first operation must have the key format `"{domain} auth"`. This prevents domain confusion attacks.
+
+8. **Network passphrase** - Ensure you use the correct network passphrase (testnet vs pubnet). The server may include a `network_passphrase` field in the challenge response (per SEP-10 spec) to help verify network configuration.
+
+## Testing
+
+The SDK provides mock handler support for testing without making real network requests. This allows you to simulate various server responses in your unit tests.
+
+```php
+<?php
+
+use GuzzleHttp\Handler\MockHandler;
+use GuzzleHttp\Psr7\Response;
+use Soneso\StellarSDK\Crypto\KeyPair;
+use Soneso\StellarSDK\Network;
+use Soneso\StellarSDK\SEP\WebAuth\WebAuth;
+
+// Create WebAuth instance with manual configuration for testing
+$webAuth = new WebAuth(
+    authEndpoint: "https://test.example.com/auth",
+    serverSigningKey: "GBWMCCC3NHSKLAOJDBKKYW7SSH2PFTTNVFKWSGLWGDLEBKLOVP5JLBBP",
+    serverHomeDomain: "test.example.com",
+    network: Network::testnet()
+);
+
+// Create mock responses
+// In a real test, you would construct a valid challenge transaction XDR
+// The SDK's unit tests show how to build these - see WebAuthTest.php
+$challengeResponseJson = json_encode(['transaction' => 'YOUR_VALID_CHALLENGE_XDR']);
+$tokenResponseJson = json_encode(['token' => 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...'']);
+
+$mock = new MockHandler([
+    new Response(200, [], $challengeResponseJson),  // Challenge response
+    new Response(200, [], $tokenResponseJson)       // Token response
+]);
+
+// Inject mock handler
+$webAuth->setMockHandler($mock);
+
+// Now jwtToken() will use mock responses instead of real HTTP requests
+$userKeyPair = KeyPair::random();
+$jwtToken = $webAuth->jwtToken($userKeyPair->getAccountId(), [$userKeyPair]);
+```
+
+For complete testing examples including valid challenge transaction construction, refer to the SDK's test suite in `Soneso/StellarSDKTests/Unit/SEP/WebAuth/WebAuthTest.php`.
+
+## JWT Token Structure
+
+The JWT token returned by SEP-10 authentication contains standard claims. While the SDK doesn't provide a built-in JWT decoder, understanding the token structure helps with debugging and validation.
+
+**Standard JWT claims:**
+- `sub` - The authenticated account (G... or M... address, or G...:memo format for memo-based auth)
+- `iss` - The token issuer (authentication server URL)
+- `iat` - Token issued at timestamp (Unix epoch)
+- `exp` - Token expiration timestamp (Unix epoch)
+- `client_domain` - (optional) Present when client domain verification was performed
+
+To decode and inspect a JWT token, you can use any JWT library or the [jwt.io](https://jwt.io) debugger.
 
 ## Related SEPs
 
@@ -299,3 +515,4 @@ try {
 - [SEP-06](sep-06.md) - Deposit/withdrawal (uses SEP-10 auth)
 - [SEP-12](sep-12.md) - KYC API (uses SEP-10 auth)
 - [SEP-24](sep-24.md) - Interactive deposit/withdrawal (uses SEP-10 auth)
+- [SEP-45](sep-45.md) - Web Authentication for Contract Accounts (Soroban alternative)
