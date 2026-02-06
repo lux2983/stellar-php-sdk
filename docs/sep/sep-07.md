@@ -143,7 +143,7 @@ echo $uri . PHP_EOL;
 
 ## Signing URIs
 
-If your server issues URIs and wants to prove authenticity, sign them with your URI_REQUEST_SIGNING_KEY (published in stellar.toml):
+If your application issues payment request URIs and wants to prove authenticity, sign them with a URI_REQUEST_SIGNING_KEY (which you publish in your stellar.toml):
 
 ```php
 <?php

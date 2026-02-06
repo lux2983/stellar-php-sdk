@@ -1,8 +1,8 @@
 # SEP-01: Stellar Info File (stellar.toml)
 
-The stellar.toml file is a standardized configuration file that organizations host at their domain to publish information about their Stellar integration. It tells wallets and other services how to interact with your organization's accounts, assets, and services.
+The stellar.toml file is a standardized configuration file that anchors and organizations host at their domains. It tells wallets and other services how to interact with their accounts, assets, and services. The SDK fetches and parses these files so your application can discover anchor endpoints.
 
-**When to use:** Anchors, asset issuers, and organizations need to publish a stellar.toml. Wallets and services need to read it to discover endpoints for SEP-6, SEP-10, SEP-24, federation, and other protocols.
+**When to use:** Use this when your application needs to discover an anchor's service endpoints (SEP-6, SEP-10, SEP-24, federation, etc.) by fetching their stellar.toml file.
 
 See the [SEP-01 specification](https://github.com/stellar/stellar-protocol/blob/master/ecosystem/sep-0001.md) for protocol details.
 

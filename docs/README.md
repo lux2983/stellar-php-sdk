@@ -81,9 +81,6 @@ The SDK implements these Stellar Ecosystem Proposals:
 **Building a wallet?**
 Quick Start → Accounts & Keys → Transactions → SEP-10 → SEP-24
 
-**Building an anchor?**
-Quick Start → SEP-1 → SEP-10 → SEP-12 → SEP-24/SEP-31
-
 **Working with smart contracts?**
 Quick Start → Soroban Guide → Advanced
 

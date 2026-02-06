@@ -43,18 +43,6 @@ Start with authentication, then add deposit/withdrawal support:
 
 SEP-24 shows the user a web interface hosted by the anchor. SEP-06 handles everything via API calls. Most wallets use SEP-24 because it offloads UI complexity to the anchor.
 
-### Building an Anchor
-
-Anchors need to publish their capabilities and handle user verification:
-
-1. **SEP-01** — Publish your stellar.toml so wallets can discover your services
-2. **SEP-10** — Authenticate incoming requests
-3. **SEP-12** — Collect and verify KYC information
-4. **SEP-24** — Interactive deposit/withdrawal for retail users
-5. **SEP-31** — Cross-border payments for B2B flows
-
-If you're building a remittance service, add **SEP-38** for exchange rate quotes.
-
 ### Working with Regulated Assets
 
 Some assets require issuer approval for every transaction:
