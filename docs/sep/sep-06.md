@@ -9,9 +9,9 @@ SEP-06 defines a standard protocol for programmatic deposits and withdrawals thr
 
 **Spec:** [SEP-0006](https://github.com/stellar/stellar-protocol/blob/master/ecosystem/sep-0006.md)
 
-## Quick Example
+## Quick example
 
-This example demonstrates authenticating with an anchor via SEP-10 and initiating a deposit request.
+This example shows how to authenticate with an anchor via SEP-10 and initiate a deposit request.
 
 ```php
 <?php
@@ -42,9 +42,9 @@ echo "Deposit instructions: " . $response->how . PHP_EOL;
 echo "Fee: " . $response->feeFixed . PHP_EOL;
 ```
 
-## Creating the Service
+## Creating the service
 
-### From Domain (Recommended)
+### From domain (recommended)
 
 The SDK discovers the `TRANSFER_SERVER` URL automatically from the anchor's `stellar.toml` file.
 
@@ -59,7 +59,7 @@ $transferService = TransferServerService::fromDomain("testanchor.stellar.org");
 
 ### Direct URL
 
-If you already know the transfer server URL, you can construct the service directly.
+If you already know the transfer server URL, construct the service directly.
 
 ```php
 <?php
@@ -69,7 +69,7 @@ use Soneso\StellarSDK\SEP\TransferServerService\TransferServerService;
 $transferService = new TransferServerService("https://testanchor.stellar.org/sep6");
 ```
 
-## Querying Anchor Info
+## Querying anchor info
 
 Before initiating deposits or withdrawals, query the info endpoint to discover supported assets, methods, and requirements.
 
@@ -136,7 +136,7 @@ echo "Transaction endpoint enabled: " . ($info->transactionInfo?->enabled ? "yes
 
 A deposit is when a user sends an external asset (BTC, USD via bank, etc.) to an anchor and receives equivalent Stellar tokens in their account.
 
-### Basic Deposit Request
+### Basic deposit request
 
 Request deposit instructions from the anchor by specifying the asset code and destination Stellar account.
 
@@ -223,9 +223,9 @@ try {
 }
 ```
 
-### Deposit with All Options
+### Deposit with all options
 
-The `DepositRequest` class supports many optional parameters for different use cases.
+The `DepositRequest` class supports optional parameters for different use cases.
 
 ```php
 <?php
@@ -260,7 +260,7 @@ $response = $transferService->deposit($request);
 
 A withdrawal is when a user redeems Stellar tokens for their off-chain equivalent, such as sending USDC to receive USD in a bank account.
 
-### Basic Withdrawal Request
+### Basic withdrawal request
 
 Request withdrawal instructions by specifying the asset and withdrawal method.
 
@@ -329,7 +329,7 @@ try {
 }
 ```
 
-### Withdrawal with All Options
+### Withdrawal with all options
 
 The `WithdrawRequest` class supports parameters for refund handling, memos, and more.
 
@@ -360,11 +360,11 @@ $request = new WithdrawRequest(
 $response = $transferService->withdraw($request);
 ```
 
-## Exchange Operations (Cross-Asset)
+## Exchange operations (cross-asset)
 
-For deposits/withdrawals with currency conversion (e.g., deposit BRL, receive USDC), use the exchange endpoints. These require anchor support for SEP-38 quotes.
+For deposits or withdrawals with currency conversion (e.g., deposit BRL, receive USDC), use the exchange endpoints. These require anchor support for SEP-38 quotes.
 
-### Deposit Exchange
+### Deposit exchange
 
 Deposit one asset (e.g., off-chain BRL) and receive a different Stellar asset (e.g., USDC).
 
@@ -397,7 +397,7 @@ if ($response->instructions) {
 }
 ```
 
-### Withdraw Exchange
+### Withdraw exchange
 
 Send one Stellar asset (e.g., USDC) and receive a different off-chain asset (e.g., NGN).
 
@@ -429,9 +429,9 @@ if ($response->memo) {
 }
 ```
 
-## Checking Fees
+## Checking fees
 
-Query the fee endpoint to calculate fees before initiating transfers. This is useful when the fee structure is complex.
+Query the fee endpoint to calculate fees before initiating transfers.
 
 ```php
 <?php
@@ -457,7 +457,7 @@ if ($info->feeInfo?->enabled) {
 }
 ```
 
-## Transaction History
+## Transaction history
 
 List all transactions for an account, with optional filtering by asset, type, and time range.
 
@@ -514,7 +514,7 @@ foreach ($response->transactions as $tx) {
 }
 ```
 
-## Single Transaction Status
+## Single transaction status
 
 Query a specific transaction by ID, Stellar transaction hash, or external transaction ID.
 
@@ -573,7 +573,7 @@ $request->jwt = $jwtToken;
 $response = $transferService->transaction($request);
 ```
 
-## Updating Pending Transactions
+## Updating pending transactions
 
 When an anchor requests more info via `pending_transaction_info_update` status, use this endpoint to provide the missing information.
 
@@ -620,7 +620,7 @@ if ($txResponse->transaction->status === "pending_transaction_info_update") {
 }
 ```
 
-## Error Handling
+## Error handling
 
 The SDK throws specific exceptions for different error conditions.
 
@@ -683,7 +683,7 @@ try {
 }
 ```
 
-### Common Exceptions
+### Common exceptions
 
 | Exception | Cause | Solution |
 |-----------|-------|----------|
@@ -693,7 +693,7 @@ try {
 | `GuzzleException` | Network or HTTP error | Check connectivity, retry |
 | `Exception` | Domain/service unavailable | Verify anchor domain and availability |
 
-## Transaction Statuses
+## Transaction statuses
 
 | Status | Meaning |
 |--------|---------|
@@ -715,9 +715,9 @@ try {
 | `too_large` | Transaction amount exceeds maximum |
 | `error` | Unrecoverable error occurred |
 
-## Complete Deposit Flow
+## Complete deposit flow
 
-This example shows a complete deposit flow including authentication, info discovery, deposit initiation, and transaction polling.
+This example shows a complete deposit flow: authentication, info discovery, deposit initiation, and transaction polling.
 
 ```php
 <?php

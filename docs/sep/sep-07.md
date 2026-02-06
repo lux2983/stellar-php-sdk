@@ -6,7 +6,7 @@ SEP-07 defines a URI scheme (`web+stellar:`) that enables applications to reques
 
 See the [SEP-07 specification](https://github.com/stellar/stellar-protocol/blob/master/ecosystem/sep-0007.md) for complete protocol details.
 
-## Quick Example
+## Quick example
 
 The simplest way to create a payment request URI is with `generatePayOperationURI()`. This creates a `web+stellar:pay?` URI that any SEP-07 compliant wallet can process.
 
@@ -31,7 +31,7 @@ echo $uri . PHP_EOL;
 
 ## Generating URIs
 
-### Transaction Signing (tx operation)
+### Transaction signing (tx operation)
 
 The `tx` operation requests a wallet to sign a specific XDR-encoded transaction. Use this when you have full control over the transaction structure and need an exact transaction to be signed.
 
@@ -71,9 +71,9 @@ echo $uri . PHP_EOL;
 // Output: web+stellar:tx?xdr=AAAAAgAAAAD...
 ```
 
-### Transaction URI with All Options
+### Transaction URI with all options
 
-The `generateSignTransactionURI()` method accepts several optional parameters for callbacks, messages, signature verification, and more.
+The `generateSignTransactionURI()` method accepts optional parameters for callbacks, messages, signature verification, and more.
 
 ```php
 <?php
@@ -98,9 +98,9 @@ $uri = $uriScheme->generateSignTransactionURI(
 echo $uri . PHP_EOL;
 ```
 
-### Field Replacement with Txrep (replace parameter)
+### Field replacement with Txrep (replace parameter)
 
-The `replace` parameter allows you to specify fields in the transaction that should be filled in by the wallet user. This uses the [SEP-11 Txrep](sep-11.md) format to identify fields. This is useful when you want the user to provide certain values like source account or destination.
+The `replace` parameter lets you specify fields in the transaction that should be filled in by the wallet user. This uses the [SEP-11 Txrep](sep-11.md) format to identify fields. Useful when you want the user to provide certain values like source account or destination.
 
 ```php
 <?php
@@ -122,9 +122,9 @@ $uri = $uriScheme->generateSignTransactionURI(
 echo $uri . PHP_EOL;
 ```
 
-### Transaction Chaining (chain parameter)
+### Transaction chaining (chain parameter)
 
-The `chain` parameter allows embedding a previous SEP-07 URI that triggered the creation of this one. This is informational and enables verification of the full request chain. Note that chains can nest up to 7 levels deep.
+The `chain` parameter embeds a previous SEP-07 URI that triggered the creation of this one. This is informational and enables verification of the full request chain. Chains can nest up to 7 levels deep.
 
 ```php
 <?php
@@ -147,9 +147,9 @@ $uri = $uriScheme->generateSignTransactionURI(
 echo $uri . PHP_EOL;
 ```
 
-### Payment Request (pay operation)
+### Payment request (pay operation)
 
-The `pay` operation requests a payment to a destination without pre-building a transaction. The wallet has flexibility to choose the payment method (direct or path payment) and source asset.
+The `pay` operation requests a payment to a destination without pre-building a transaction. The wallet can choose the payment method (direct or path payment) and source asset.
 
 ```php
 <?php
@@ -167,7 +167,7 @@ echo $uri . PHP_EOL;
 // Output: web+stellar:pay?destination=GDGUF4SC...&amount=50.5
 ```
 
-### Payment with Asset and Memo
+### Payment with asset and memo
 
 When accepting payments for specific assets or with order tracking via memos, specify the full payment details.
 
@@ -190,7 +190,7 @@ $uri = $uriScheme->generatePayOperationURI(
 echo $uri . PHP_EOL;
 ```
 
-### Payment with Hash or Return Memo
+### Payment with hash or return memo
 
 For `MEMO_HASH` and `MEMO_RETURN` memo types, the memo value must be base64-encoded before being passed to the method.
 
@@ -214,9 +214,9 @@ $uri = $uriScheme->generatePayOperationURI(
 echo $uri . PHP_EOL;
 ```
 
-### Donation Request (no amount)
+### Donation request (no amount)
 
-Omit the amount to let the user decide how much to send. This is useful for donations or tips.
+Omit the amount to let the user decide how much to send. Useful for donations or tips.
 
 ```php
 <?php
@@ -235,7 +235,7 @@ echo $uri . PHP_EOL;
 // Output: web+stellar:pay?destination=GDGUF4SC...&msg=Support%20our%20open%20source%20project%21
 ```
 
-## Signing URIs for Origin Verification
+## Signing URIs for origin verification
 
 If your application issues SEP-07 URIs and wants to prove authenticity, sign them with a keypair whose public key is published as `URI_REQUEST_SIGNING_KEY` in your [stellar.toml](sep-01.md) file.
 
@@ -317,9 +317,9 @@ try {
 
 > **Note:** The method is named `checkUIRSchemeIsValid()` (with a typo - "UIR" instead of "URI"). This is maintained for backward compatibility.
 
-## Signing and Submitting Transactions
+## Signing and submitting transactions
 
-Use `signAndSubmitTransaction()` to sign a transaction from a URI and submit it. The method automatically handles submission to either a callback URL or directly to the Stellar network.
+Use `signAndSubmitTransaction()` to sign a transaction from a URI and submit it. The method handles submission to either a callback URL or directly to the Stellar network.
 
 ```php
 <?php
@@ -362,7 +362,7 @@ if ($response->getSubmitTransactionResponse() !== null) {
 }
 ```
 
-## Extracting URI Parameters
+## Extracting URI parameters
 
 Use `getParameterValue()` to extract specific query parameters from a SEP-07 URI.
 
@@ -400,7 +400,7 @@ if ($callback !== null) {
 }
 ```
 
-### Available Parameter Constants
+### Available parameter constants
 
 The `URIScheme` class provides constants for all standard parameter names:
 
@@ -422,9 +422,9 @@ The `URIScheme` class provides constants for all standard parameter names:
 | `memoParameterName` | `memo` | Transaction memo value |
 | `memoTypeParameterName` | `memo_type` | Memo type |
 
-## Error Handling
+## Error handling
 
-Comprehensive error handling for URI validation and transaction submission.
+Error handling for URI validation and transaction submission.
 
 ```php
 <?php
@@ -491,9 +491,9 @@ try {
 }
 ```
 
-## Testing with Mock HTTP Handler
+## Testing with mock HTTP handler
 
-For unit testing, use `setMockHandlerStack()` to replace the HTTP client with a mock handler. This allows testing stellar.toml fetching and callback submissions without making actual network requests.
+For unit testing, use `setMockHandlerStack()` to replace the HTTP client with a mock handler. This lets you test stellar.toml fetching and callback submissions without making actual network requests.
 
 ```php
 <?php
@@ -521,9 +521,9 @@ $uriScheme->setMockHandlerStack($handlerStack);
 // ... your test code here
 ```
 
-## QR Codes
+## QR codes
 
-SEP-07 URIs can be encoded into QR codes for easy mobile scanning. Simply encode the complete URI into the QR code data.
+SEP-07 URIs can be encoded into QR codes for mobile scanning. Encode the complete URI into the QR code data.
 
 ```php
 <?php
@@ -546,18 +546,18 @@ $uri = $uriScheme->generatePayOperationURI(
 echo "Encode this URI in a QR code: " . $uri . PHP_EOL;
 ```
 
-## Security Considerations
+## Security considerations
 
-When implementing SEP-07 support, follow these security best practices from the specification:
+When implementing SEP-07 support, follow these security practices from the specification:
 
-### For Applications Generating URIs
+### For applications generating URIs
 
 - **Always sign your URIs** with an `origin_domain` and `signature` when possible. Unsigned URIs should be treated as untrusted.
 - **Publish your `URI_REQUEST_SIGNING_KEY`** in your stellar.toml file.
 - **Include meaningful messages** in the `msg` parameter to help users understand what they're signing.
 - **Use unique memos** to track individual payment requests.
 
-### For Wallets Processing URIs
+### For wallets processing URIs
 
 - **Always validate signed URIs** before displaying `origin_domain` to users.
 - **Never auto-sign transactions** - always get explicit user consent.
@@ -567,7 +567,7 @@ When implementing SEP-07 support, follow these security best practices from the 
 - **Use fonts that distinguish similar characters** to prevent homograph attacks (e.g., distinguishing `l` from `I`, or Latin from Cyrillic characters).
 - **Cache `URI_REQUEST_SIGNING_KEY`** per domain and alert users if it changes.
 
-### Callback Security
+### Callback security
 
 - **Callbacks receive signed transactions** - be careful what endpoints you trust.
 - **Validate callback URLs** before sending signed transactions to them.

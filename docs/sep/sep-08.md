@@ -11,9 +11,9 @@ SEP-08 defines a protocol for assets that require issuer approval for every tran
 
 **Spec:** [SEP-0008 v1.7.4](https://github.com/stellar/stellar-protocol/blob/master/ecosystem/sep-0008.md)
 
-## Quick Example
+## Quick example
 
-This example shows the basic flow of discovering a regulated asset and submitting a transaction for approval:
+This example shows the basic flow: discovering a regulated asset and submitting a transaction for approval:
 
 ```php
 <?php
@@ -43,7 +43,7 @@ if ($response instanceof SEP08PostTransactionSuccess) {
 }
 ```
 
-## How Regulated Assets Work
+## How regulated assets work
 
 Per SEP-08, regulated assets require a specific setup and workflow:
 
@@ -55,11 +55,11 @@ Per SEP-08, regulated assets require a specific setup and workflow:
 6. **Signing**: If approved, the server signs and returns the transaction.
 7. **Network submission**: Wallet submits the fully-signed transaction to the Stellar network.
 
-## Creating the Service
+## Creating the service
 
-### From Domain (Recommended)
+### From domain (recommended)
 
-The simplest approach loads stellar.toml from the issuer's domain and extracts all regulated asset definitions automatically:
+The simplest approach loads stellar.toml from the issuer's domain and extracts all regulated asset definitions:
 
 ```php
 <?php
@@ -75,9 +75,9 @@ foreach ($service->regulatedAssets as $asset) {
 }
 ```
 
-### From StellarToml Data
+### From StellarToml data
 
-If you've already loaded the stellar.toml data, you can pass it directly to the constructor:
+If you've already loaded the stellar.toml data, pass it directly to the constructor:
 
 ```php
 <?php
@@ -93,9 +93,9 @@ $service = new RegulatedAssetsService(
 );
 ```
 
-### With Custom HTTP Client
+### With custom HTTP client
 
-You can provide a custom Guzzle HTTP client for approval server requests. This is useful for testing, proxying, or custom timeout configuration:
+You can provide a custom Guzzle HTTP client for approval server requests. Useful for testing, proxying, or custom timeout configuration:
 
 ```php
 <?php
@@ -114,9 +114,9 @@ $service = RegulatedAssetsService::fromDomain(
 );
 ```
 
-### Service Properties
+### Service properties
 
-After initialization, the service exposes useful properties:
+After initialization, the service exposes these properties:
 
 ```php
 <?php
@@ -138,7 +138,7 @@ $sdk = $service->sdk;
 $network = $service->network;
 ```
 
-## Discovering Regulated Assets
+## Discovering regulated assets
 
 The `RegulatedAsset` class extends `AssetTypeCreditAlphanum`, so it can be used wherever a standard asset is expected. It adds approval server information required for the compliance workflow:
 
@@ -164,7 +164,7 @@ foreach ($service->regulatedAssets as $asset) {
 }
 ```
 
-## Checking Authorization Requirements
+## Checking authorization requirements
 
 Before transacting, verify the issuer account has proper authorization flags set. Per SEP-08, regulated asset issuers must have both `AUTH_REQUIRED` and `AUTH_REVOCABLE` flags enabled:
 
@@ -186,7 +186,7 @@ if ($needsApproval) {
 }
 ```
 
-## Building a Transaction for Approval
+## Building a transaction for approval
 
 Create and sign your transaction normally, then submit the base64-encoded XDR to the approval server:
 
@@ -233,9 +233,9 @@ $response = $service->postTransaction(
 );
 ```
 
-## Handling Approval Responses
+## Handling approval responses
 
-The approval server returns one of five response types. Use `instanceof` checks to determine the response type and handle appropriately:
+The approval server returns one of five response types. Use `instanceof` checks to determine the response type and handle it:
 
 ```php
 <?php
@@ -287,7 +287,7 @@ if ($response instanceof SEP08PostTransactionSuccess) {
 }
 ```
 
-### Response Types Reference
+### Response types reference
 
 | Response Class | Status | HTTP Code | Meaning |
 |---------------|--------|-----------|---------|
@@ -297,7 +297,7 @@ if ($response instanceof SEP08PostTransactionSuccess) {
 | `SEP08PostTransactionActionRequired` | `action_required` | 200 | User must complete action at URL |
 | `SEP08PostTransactionRejected` | `rejected` | 400 | Denied—see error message |
 
-## Handling Action Required
+## Handling action required
 
 When the approval server needs additional information (KYC data, terms acceptance, etc.), it returns an `action_required` status. The SDK supports both GET and POST action methods:
 
@@ -354,9 +354,9 @@ if ($response instanceof SEP08PostTransactionActionRequired) {
 }
 ```
 
-## Complete Workflow Example
+## Complete workflow example
 
-This example demonstrates the full approval flow for a regulated asset transfer, including all response type handling:
+This example shows the full approval flow for a regulated asset transfer, including all response type handling:
 
 ```php
 <?php
@@ -435,9 +435,9 @@ if ($approvedTx !== null) {
 }
 ```
 
-## Error Handling
+## Error handling
 
-The SDK throws specific exceptions for different error conditions. Handle them appropriately for a robust implementation:
+The SDK throws specific exceptions for different error conditions:
 
 ```php
 <?php
@@ -484,7 +484,7 @@ try {
 }
 ```
 
-### Exception Reference
+### Exception reference
 
 | Exception | When Thrown |
 |-----------|-------------|
@@ -494,9 +494,9 @@ try {
 | `HorizonRequestException` | Horizon API calls fail (account lookup, transaction submission) |
 | `GuzzleException` | Network-level errors (timeouts, connection failures) |
 
-## Security Considerations
+## Security considerations
 
-### Reviewing Revised Transactions
+### Reviewing revised transactions
 
 When you receive a `revised` response, **always inspect the transaction before submitting**. Per SEP-08, the approval server should only add operations (like authorization ops), not modify your original operations' intent. However, malicious servers could attempt to:
 
@@ -506,9 +506,9 @@ When you receive a `revised` response, **always inspect the transaction before s
 
 Best practice: Compare the revised transaction with your original to ensure only expected operations were added.
 
-### Authorization Flags
+### Authorization flags
 
-The `AUTH_REQUIRED` and `AUTH_REVOCABLE` flags on the issuer account are essential for security. They ensure:
+The `AUTH_REQUIRED` and `AUTH_REVOCABLE` flags on the issuer account are required for security. They ensure:
 - No one can transact the asset without explicit authorization
 - Authorization can be revoked if compliance issues arise
 - Transactions are atomic (authorize → transact → deauthorize happens together)
