@@ -6,6 +6,26 @@ Federation allows users to send payments using human-readable addresses like `bo
 
 See the [SEP-02 specification](https://github.com/stellar/stellar-protocol/blob/master/ecosystem/sep-0002.md) for protocol details.
 
+## Address Format
+
+A Stellar address has two parts: `username*domain.com`
+- **Username:** Any printable UTF-8 except `*` and `>` (emails and phone numbers are allowed)  
+- **Domain:** Any valid RFC 1035 domain name
+
+Examples: `bob*example.com`, `alice@gmail.com*stellar.org`, `+14155550100*bank.com`
+
+## How Address Resolution Works
+
+When you resolve a Stellar address like `bob*example.com`, this happens:
+
+1. **Parse the address** - Split on `*` to get username (`bob`) and domain (`example.com`)
+2. **Fetch stellar.toml** - Download `https://example.com/.well-known/stellar.toml`
+3. **Find federation server** - Extract the `FEDERATION_SERVER` URL from the TOML
+4. **Query federation server** - Make GET request: `FEDERATION_SERVER/federation?q=bob*example.com&type=name`
+5. **Get account details** - Server returns account ID and optional memo
+
+The SDK handles this entire flow automatically with `Federation::resolveStellarAddress()`.
+
 ## Quick Example
 
 ```php
@@ -22,7 +42,7 @@ echo "Memo: " . $response->getMemo() . PHP_EOL;
 
 ## Resolving Stellar Addresses
 
-A Stellar address has the format `name*domain`. The SDK fetches the domain's stellar.toml to find the federation server, then queries it.
+Convert a Stellar address to an account ID and optional memo:
 
 ```php
 <?php
@@ -49,6 +69,8 @@ $address = $response->getStellarAddress();
 echo "Address: " . $address . PHP_EOL;
 // bob*soneso.com
 ```
+
+**Important:** Don't cache federation responses. Some services use random account IDs for privacy, which may change over time.
 
 ## Reverse Lookup (Account ID to Address)
 
@@ -90,7 +112,7 @@ if ($response->getStellarAddress() !== null) {
 
 ## Forward Federation
 
-Forward federation maps external identifiers (bank accounts, routing numbers, etc.) to Stellar accounts. This is used when you want to pay someone who doesn't have a Stellar address but has another type of account.
+Forward federation maps external identifiers (bank accounts, routing numbers, etc.) to Stellar accounts. Use this to pay someone who doesn't have a Stellar address but has another type of account that an anchor supports.
 
 ```php
 <?php
@@ -163,6 +185,7 @@ if ($response->getMemo() !== null) {
     } elseif ($memoType === 'id') {
         $txBuilder->addMemo(Memo::id((int)$response->getMemo()));
     } elseif ($memoType === 'hash') {
+        // Hash memo values are base64-encoded in federation responses
         $txBuilder->addMemo(Memo::hash(base64_decode($response->getMemo())));
     }
 }
@@ -190,21 +213,21 @@ use InvalidArgumentException;
 use Soneso\StellarSDK\Exceptions\HorizonRequestException;
 use Soneso\StellarSDK\SEP\Federation\Federation;
 
-// Invalid address format
+// Invalid address format (missing *)
 try {
     Federation::resolveStellarAddress('invalid-no-asterisk');
 } catch (InvalidArgumentException $e) {
     echo "Invalid format: " . $e->getMessage() . PHP_EOL;
 }
 
-// Domain without federation server
+// Domain without federation server in stellar.toml
 try {
     Federation::resolveStellarAddress('user*domain-without-federation.com');
 } catch (Exception $e) {
     echo "No federation server: " . $e->getMessage() . PHP_EOL;
 }
 
-// User not found
+// User not found (federation server returns 404)
 try {
     $response = Federation::resolveStellarAddress('nonexistent*soneso.com');
     if ($response->getAccountId() === null) {
@@ -217,7 +240,7 @@ try {
 
 ## Finding the Federation Server
 
-Get the federation server URL from a domain's stellar.toml:
+Each domain publishes its federation server URL in stellar.toml. This is step 2-3 of the address resolution flow:
 
 ```php
 <?php
@@ -232,9 +255,11 @@ echo "Federation Server: " . $federationServer . PHP_EOL;
 // https://stellarid.io/federation
 ```
 
+**Note:** `Federation::resolveStellarAddress()` does this lookup automatically. You only need this for reverse lookups or when using `FederationRequestBuilder` directly.
+
 ## Using FederationRequestBuilder Directly
 
-For more control over federation requests, use `FederationRequestBuilder` with a federation server URL:
+Use `FederationRequestBuilder` when you need custom HTTP clients, want to build URLs manually, or are working with non-standard federation parameters:
 
 ```php
 <?php
