@@ -1,4 +1,4 @@
-# SEP-29: Memo Required
+# SEP-29: Account Memo Requirements
 
 SEP-29 prevents lost funds by allowing accounts to require incoming payments include a memo. Exchanges and custodians use this to identify which customer a payment belongs to. Without a memo, deposits can't be credited to the right user.
 
@@ -10,6 +10,8 @@ SEP-29 prevents lost funds by allowing accounts to require incoming payments inc
 **Spec:** [SEP-0029](https://github.com/stellar/stellar-protocol/blob/master/ecosystem/sep-0029.md)
 
 ## Quick Example
+
+Check whether destination accounts require a memo before submitting a payment. If any destination requires a memo and the transaction lacks one, rebuild the transaction with a memo attached:
 
 ```php
 <?php
@@ -52,21 +54,28 @@ $response = $sdk->submitTransaction($transaction);
 
 ## How It Works
 
-Accounts signal memo requirement by setting a data entry with key `config.memo_required` and value `1`.
+Accounts signal memo requirement by setting a data entry with key `config.memo_required` and value `1` (following the [SEP-18](https://github.com/stellar/stellar-protocol/blob/master/ecosystem/sep-0018.md) namespace convention).
 
 When you call `checkMemoRequired()`, the SDK:
-1. Returns `false` immediately if the transaction already has a memo
-2. Extracts destinations from payment-type operations
-3. Queries each destination's account data
-4. Returns the first account ID requiring a memo, or `false` if none do
 
-Checked operation types: `PaymentOperation`, `PathPaymentStrictSendOperation`, `PathPaymentStrictReceiveOperation`, `AccountMergeOperation`.
+1. Returns `false` immediately if the transaction is a fee bump (check the inner transaction instead)
+2. Returns `false` immediately if the transaction already has a memo attached
+3. Extracts destination addresses from payment-type operations
+4. Skips [multiplexed accounts](https://github.com/stellar/stellar-protocol/blob/master/core/cap-0027.md) (M-addresses) since they already encode user identification
+5. Queries each remaining destination's account data from Horizon
+6. Returns the first account ID that has `config.memo_required` set to `1`, or `false` if none do
+
+**Checked operation types:**
+- `PaymentOperation`
+- `PathPaymentStrictSendOperation`
+- `PathPaymentStrictReceiveOperation`
+- `AccountMergeOperation`
 
 ## Detailed Usage
 
 ### Setting Memo Requirement on Your Account
 
-If you run an exchange or custodial service:
+Exchanges and custodial services should set the `config.memo_required` data entry to ensure senders include a memo. Use a `ManageDataOperation` to add the entry:
 
 ```php
 <?php
@@ -93,16 +102,20 @@ $transaction->sign($exchangeKeyPair, Network::testnet());
 $sdk->submitTransaction($transaction);
 ```
 
-To remove the requirement, pass `null` as the value (deletes the data entry):
+To remove the requirement later, pass `null` as the value. This deletes the data entry entirely:
 
 ```php
+<?php
+
+use Soneso\StellarSDK\ManageDataOperationBuilder;
+
 $removeMemoRequired = (new ManageDataOperationBuilder("config.memo_required", null))
     ->build();
 ```
 
 ### Transactions with Multiple Destinations
 
-The check validates all destination accounts and returns the first one requiring a memo:
+When a transaction contains multiple payment operations, the SDK checks all destination accounts. It returns the first account ID requiring a memo, allowing you to inform the user which recipient needs one:
 
 ```php
 <?php
@@ -134,15 +147,94 @@ if ($accountRequiringMemo !== false) {
 }
 ```
 
-## Integration with Payment Flows
+### Account Merge Operations
 
-Check memo requirements before showing the confirmation screen:
+The memo check also applies to `AccountMergeOperation`, since merging sends the account balance to the destination. This example validates before merging an account:
+
+```php
+<?php
+
+use Soneso\StellarSDK\AccountMergeOperationBuilder;
+use Soneso\StellarSDK\Crypto\KeyPair;
+use Soneso\StellarSDK\Memo;
+use Soneso\StellarSDK\Network;
+use Soneso\StellarSDK\StellarSDK;
+use Soneso\StellarSDK\TransactionBuilder;
+
+$sdk = StellarSDK::getTestNetInstance();
+$sourceKeyPair = KeyPair::fromSeed("SCZANGBA5YHTNYVVV3C7CAZMTQDBJHJG6C34CJDQ66EQ7DZTPBRJFN4A");
+$destinationId = "GDQP2KPQGKIHYJGXNUIYOMHARUARCA7DJT5FO2FFOOUJ3UBEZ3ENO5GT";
+
+$sourceAccount = $sdk->requestAccount($sourceKeyPair->getAccountId());
+
+$mergeOp = (new AccountMergeOperationBuilder($destinationId))->build();
+
+$transaction = (new TransactionBuilder($sourceAccount))
+    ->addOperation($mergeOp)
+    ->build();
+
+$requiresMemo = $sdk->checkMemoRequired($transaction);
+
+if ($requiresMemo !== false) {
+    // Rebuild with memo before merging
+    $transaction = (new TransactionBuilder($sourceAccount))
+        ->addOperation($mergeOp)
+        ->addMemo(Memo::text("closing-account"))
+        ->build();
+}
+
+$transaction->sign($sourceKeyPair, Network::testnet());
+$sdk->submitTransaction($transaction);
+```
+
+### Multiplexed Accounts (M-addresses)
+
+Per the SEP-29 specification, multiplexed accounts are excluded from memo requirement checks. Muxed accounts (M-addresses) already encode user identification in the address itself, making a separate memo unnecessary:
 
 ```php
 <?php
 
 use Soneso\StellarSDK\Asset;
 use Soneso\StellarSDK\Crypto\KeyPair;
+use Soneso\StellarSDK\MuxedAccount;
+use Soneso\StellarSDK\Network;
+use Soneso\StellarSDK\PaymentOperationBuilder;
+use Soneso\StellarSDK\StellarSDK;
+use Soneso\StellarSDK\TransactionBuilder;
+
+$sdk = StellarSDK::getTestNetInstance();
+$senderKeyPair = KeyPair::fromSeed("SCZANGBA5YHTNYVVV3C7CAZMTQDBJHJG6C34CJDQ66EQ7DZTPBRJFN4A");
+$senderAccount = $sdk->requestAccount($senderKeyPair->getAccountId());
+
+// Create a muxed destination with user ID embedded
+$baseAccountId = "GDQP2KPQGKIHYJGXNUIYOMHARUARCA7DJT5FO2FFOOUJ3UBEZ3ENO5GT";
+$muxedDestination = new MuxedAccount($baseAccountId, 12345);
+
+$paymentOp = (new PaymentOperationBuilder($muxedDestination, Asset::native(), "100.0"))
+    ->build();
+
+$transaction = (new TransactionBuilder($senderAccount))
+    ->addOperation($paymentOp)
+    ->build();
+
+// Returns false for muxed accounts — no memo check needed
+$requiresMemo = $sdk->checkMemoRequired($transaction);
+// $requiresMemo === false
+
+$transaction->sign($senderKeyPair, Network::testnet());
+$sdk->submitTransaction($transaction);
+```
+
+## Integration with Payment Flows
+
+Use memo requirement checking as part of your payment validation flow. Check requirements before showing the confirmation screen to provide a better user experience:
+
+```php
+<?php
+
+use Soneso\StellarSDK\Asset;
+use Soneso\StellarSDK\Crypto\KeyPair;
+use Soneso\StellarSDK\Exceptions\HorizonRequestException;
 use Soneso\StellarSDK\Memo;
 use Soneso\StellarSDK\Network;
 use Soneso\StellarSDK\PaymentOperationBuilder;
@@ -156,7 +248,15 @@ function sendPayment(
     string $amount,
     ?string $memo = null
 ): array {
-    $senderAccount = $sdk->requestAccount($senderKeyPair->getAccountId());
+    try {
+        $senderAccount = $sdk->requestAccount($senderKeyPair->getAccountId());
+    } catch (HorizonRequestException $e) {
+        return [
+            'success' => false,
+            'error' => 'account_not_found',
+            'message' => 'Sender account does not exist',
+        ];
+    }
 
     $paymentOp = (new PaymentOperationBuilder($destinationId, Asset::native(), $amount))
         ->build();
@@ -169,7 +269,16 @@ function sendPayment(
     }
 
     $transaction = $builder->build();
-    $requiresMemo = $sdk->checkMemoRequired($transaction);
+
+    try {
+        $requiresMemo = $sdk->checkMemoRequired($transaction);
+    } catch (HorizonRequestException $e) {
+        return [
+            'success' => false,
+            'error' => 'destination_lookup_failed',
+            'message' => 'Could not verify destination account',
+        ];
+    }
 
     if ($requiresMemo !== false && $memo === null) {
         return [
@@ -188,7 +297,7 @@ function sendPayment(
 
 ## Error Handling
 
-The method throws `HorizonRequestException` if it fails to query a destination account:
+The `checkMemoRequired()` method queries Horizon for each destination account's data. If any lookup fails, it throws a `HorizonRequestException`. Common causes include the destination account not existing yet or Horizon being unavailable:
 
 ```php
 <?php
@@ -215,15 +324,17 @@ $transaction = (new TransactionBuilder($senderAccount))
 try {
     $requiresMemo = $sdk->checkMemoRequired($transaction);
 } catch (HorizonRequestException $e) {
-    // Account might not exist yet or Horizon unavailable
+    // Destination account might not exist yet, or Horizon is unavailable
     echo "Could not verify memo requirement: " . $e->getMessage();
 }
 ```
 
-Fee bump transactions always return `false` — check the inner transaction before wrapping.
+**Important notes:**
+- Fee bump transactions always return `false` — check the inner transaction before wrapping it
+- The method only validates memo *presence*, not memo *type* (SEP-29 intentionally omits type validation)
 
 ## Related SEPs
 
-- **[SEP-10](sep-10.md)** - Web authentication (often used by exchanges that require memos)
-- **[SEP-24](sep-24.md)** - Interactive deposit/withdrawal (anchors provide deposit memos)
-- **[SEP-31](sep-31.md)** - Cross-border payments (uses memos for transaction tracking)
+- **[SEP-10](sep-10.md)** — Web authentication (often used by exchanges that require memos)
+- **[SEP-24](sep-24.md)** — Interactive deposit/withdrawal (anchors provide deposit memos)
+- **[SEP-31](sep-31.md)** — Cross-border payments (uses memos for transaction tracking)
