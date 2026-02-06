@@ -232,6 +232,48 @@ echo "Federation Server: " . $federationServer . PHP_EOL;
 // https://stellarid.io/federation
 ```
 
+## Using FederationRequestBuilder Directly
+
+For more control over federation requests, use `FederationRequestBuilder` with a federation server URL:
+
+```php
+<?php
+
+use GuzzleHttp\Client;
+use Soneso\StellarSDK\SEP\Federation\FederationRequestBuilder;
+
+$httpClient = new Client();
+$federationServer = 'https://stellarid.io/federation';
+
+// Resolve by name
+$response = (new FederationRequestBuilder($httpClient, $federationServer))
+    ->forType('name')
+    ->forStringToLookUp('bob*soneso.com')
+    ->execute();
+
+echo "Account: " . $response->getAccountId() . PHP_EOL;
+
+// Resolve by account ID
+$response = (new FederationRequestBuilder($httpClient, $federationServer))
+    ->forType('id')
+    ->forStringToLookUp('GBVPKXWMAB3FIUJB6T7LF66DABKKA2ZHRHDOQZ25GBAEFZVHTBPJNOJI')
+    ->execute();
+
+echo "Address: " . $response->getStellarAddress() . PHP_EOL;
+
+// Forward lookup with custom parameters
+$response = (new FederationRequestBuilder($httpClient, $federationServer))
+    ->forType('forward')
+    ->forQueryParameters([
+        'forward_type' => 'bank_account',
+        'swift' => 'BOPBPHMM',
+        'acct' => '2382376'
+    ])
+    ->execute();
+
+echo "Deposit to: " . $response->getAccountId() . PHP_EOL;
+```
+
 ## Related SEPs
 
 - [SEP-01 stellar.toml](sep-01.md) - Where the `FEDERATION_SERVER` URL is published
