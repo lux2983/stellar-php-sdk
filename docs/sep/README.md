@@ -37,7 +37,7 @@ Think of SEPs as the "rules of the road" that let different Stellar applications
 
 Start with authentication, then add deposit/withdrawal support:
 
-1. **SEP-10** — Authenticate users with anchors
+1. **SEP-10** — Authenticate users with anchors (or **SEP-45** for contract accounts)
 2. **SEP-12** — Submit KYC information required by anchors
 3. **SEP-24** — Interactive deposit/withdrawal (recommended for most wallets)
 4. **SEP-06** — Programmatic deposit/withdrawal (for automated flows)
