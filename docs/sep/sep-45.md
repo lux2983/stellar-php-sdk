@@ -4,7 +4,9 @@ Authenticate Soroban smart contract accounts (C... addresses) with anchor servic
 
 ## Overview
 
-SEP-45 lets contracts prove they control an account by signing authorization entries. Use it when you need to:
+SEP-45 enables wallets and clients to prove control of a Soroban contract account by signing authorization entries provided by an anchor's authentication server. Upon successful verification, the server returns a JWT token for accessing protected SEP services.
+
+Use SEP-45 when you need to:
 
 - Authenticate a Soroban contract with an anchor service
 - Access SEP-24 deposits/withdrawals from a contract account
@@ -14,13 +16,20 @@ SEP-45 lets contracts prove they control an account by signing authorization ent
 - SEP-45: For contract accounts (C... addresses)
 - SEP-10: For traditional accounts (G... and M... addresses)
 
-The flow works like this:
-1. Request a challenge from the server
-2. Sign authorization entries with your contract's registered signers
-3. Server simulates the transaction to verify your contract's `__check_auth`
-4. Server returns a JWT token for accessing protected services
+Services supporting all account types should implement both protocols.
+
+### How It Works
+
+1. Client requests a challenge from the server
+2. Server returns authorization entries calling `web_auth_verify` on its web-auth contract
+3. Client validates and signs the entries with keypairs registered in the contract
+4. Client submits signed entries to server
+5. Server simulates the transaction — this invokes the client contract's `__check_auth`
+6. If `__check_auth` succeeds, server returns a JWT token
 
 ## Quick Example
+
+The simplest way to authenticate is using the `jwtToken()` method, which handles the entire flow automatically. This example loads configuration from the anchor's stellar.toml file.
 
 ```php
 <?php
@@ -32,28 +41,37 @@ use Soneso\StellarSDK\Network;
 // Your contract account (must implement __check_auth)
 $contractId = "CCIBUCGPOHWMMMFPFTDWBSVHQRT4DIBJ7AD6BZJYDITBK2LCVBYW7HUQ";
 
-// Signer registered in your contract
+// Signer registered in your contract's __check_auth implementation
 $signer = KeyPair::fromSeed("SXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX");
 
-// Authenticate
+// Create instance from domain and authenticate in one step
 $webAuth = WebAuthForContracts::fromDomain("anchor.example.com", Network::testnet());
 $jwtToken = $webAuth->jwtToken($contractId, [$signer]);
 
 echo "Authenticated! Token: " . substr($jwtToken, 0, 50) . "...\n";
 ```
 
-## Detailed Usage
+## Prerequisites
 
-### Prerequisites
+Before using SEP-45, ensure:
 
-Your contract must:
-1. Be deployed on the Stellar network
-2. Implement `__check_auth` to define authorization rules
-3. Have signer public keys stored in its contract storage
+1. **Server Configuration**: The service must have a stellar.toml with:
+   - `WEB_AUTH_FOR_CONTRACTS_ENDPOINT`: URL for the authentication endpoint
+   - `WEB_AUTH_CONTRACT_ID`: The server's web-auth contract address (C...)
+   - `SIGNING_KEY`: The server's signing key (G...)
 
-### Creating the Service
+2. **Client Contract Requirements**: Your contract account must:
+   - Be deployed on the Stellar network (testnet or pubnet)
+   - Implement `__check_auth` to define authorization rules
+   - Have the signer's public key registered in its contract storage
 
-From stellar.toml (recommended):
+3. **Signer Keypairs**: You need the secret keys for the signers registered in your contract's `__check_auth` implementation
+
+## Creating the Service
+
+### From stellar.toml (Recommended)
+
+The `fromDomain()` factory method automatically loads configuration from the anchor's stellar.toml file. This is the recommended approach as it ensures you're using the correct endpoint and contract information.
 
 ```php
 <?php
@@ -64,7 +82,9 @@ use Soneso\StellarSDK\Network;
 $webAuth = WebAuthForContracts::fromDomain("anchor.example.com", Network::testnet());
 ```
 
-Or with manual configuration:
+### Manual Configuration
+
+If you prefer not to load from stellar.toml, you can provide all configuration values directly. This is useful for testing or when you have the configuration cached.
 
 ```php
 <?php
@@ -81,7 +101,30 @@ $webAuth = new WebAuthForContracts(
 );
 ```
 
-### Basic Authentication
+### Custom Soroban RPC URL
+
+By default, the SDK uses the standard Soroban RPC endpoints (`soroban-testnet.stellar.org` for testnet, `soroban.stellar.org` for pubnet). You can specify a custom URL if you're using a private RPC server.
+
+```php
+<?php
+
+use Soneso\StellarSDK\SEP\WebAuthForContracts\WebAuthForContracts;
+use Soneso\StellarSDK\Network;
+
+$webAuth = new WebAuthForContracts(
+    authEndpoint: "https://anchor.example.com/auth/sep45",
+    webAuthContractId: "CCALHRGH5RXIDJDRLPPG4ZX2S563TB2QKKJR4STWKVQCYB6JVPYQXHRG",
+    serverSigningKey: "GBWMCCC3NHSKLAOJDBKKYW7SSH2PFTTNVFKWSGLWGDLEBKLOVP5JLBBP",
+    serverHomeDomain: "anchor.example.com",
+    network: Network::testnet(),
+    httpClient: null,
+    sorobanRpcUrl: "https://your-custom-rpc.example.com"
+);
+```
+
+## Basic Authentication
+
+The `jwtToken()` method executes the complete SEP-45 flow: requesting the challenge, validating entries, signing with your keypairs, and submitting for a JWT.
 
 ```php
 <?php
@@ -94,18 +137,16 @@ $contractId = "CCIBUCGPOHWMMMFPFTDWBSVHQRT4DIBJ7AD6BZJYDITBK2LCVBYW7HUQ";
 $signer = KeyPair::fromSeed("SXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX");
 
 $webAuth = WebAuthForContracts::fromDomain("anchor.example.com", Network::testnet());
-
-// The SDK handles the full flow:
-// - Requests challenge
-// - Validates authorization entries
-// - Signs with your keypair
-// - Submits for JWT
 $jwtToken = $webAuth->jwtToken($contractId, [$signer]);
 ```
 
-### Signature Expiration
+## Signature Expiration
 
-Signatures include an expiration ledger for replay protection. By default, the SDK sets this to current ledger + 10 (~50-60 seconds).
+Signatures include an expiration ledger for replay protection. Per SEP-45, this should be set to a near-future ledger to limit the window for potential replay attacks.
+
+### Automatic Expiration (Default)
+
+When you don't specify an expiration ledger, the SDK automatically fetches the current ledger from Soroban RPC and sets expiration to current ledger + 10 (~50-60 seconds).
 
 ```php
 <?php
@@ -116,7 +157,23 @@ use Soneso\StellarSDK\Network;
 
 $webAuth = WebAuthForContracts::fromDomain("anchor.example.com", Network::testnet());
 
-// Custom expiration ledger
+// Expiration is auto-filled (current ledger + 10)
+$jwtToken = $webAuth->jwtToken($contractId, [$signer]);
+```
+
+### Custom Expiration
+
+For specific requirements, you can set a custom expiration ledger. This is useful when you need more control over the signature validity window.
+
+```php
+<?php
+
+use Soneso\StellarSDK\SEP\WebAuthForContracts\WebAuthForContracts;
+use Soneso\StellarSDK\Crypto\KeyPair;
+use Soneso\StellarSDK\Network;
+
+$webAuth = WebAuthForContracts::fromDomain("anchor.example.com", Network::testnet());
+
 $jwtToken = $webAuth->jwtToken(
     $contractId,
     [$signer],
@@ -128,18 +185,31 @@ $jwtToken = $webAuth->jwtToken(
 );
 ```
 
-### Contracts Without Signature Requirements
+## Contracts Without Signature Requirements
 
-Some contracts implement `__check_auth` without requiring signatures. Pass an empty signers array:
+Some contracts implement `__check_auth` without requiring signature verification (e.g., contracts using other authorization mechanisms). Per SEP-45, client signatures are optional in such cases.
 
 ```php
-// No signers needed if contract allows it
+<?php
+
+use Soneso\StellarSDK\SEP\WebAuthForContracts\WebAuthForContracts;
+use Soneso\StellarSDK\Network;
+
+$webAuth = WebAuthForContracts::fromDomain("anchor.example.com", Network::testnet());
+
+// Empty signers array - no signatures will be added
 $jwtToken = $webAuth->jwtToken($contractId, []);
 ```
 
-### Client Domain Verification
+**Note:** When the signers array is empty, the SDK skips the Soroban RPC call since no signature expiration is needed. This only works if both the anchor and your contract support signature-less authentication.
 
-Non-custodial wallets can prove their domain to the anchor. Your domain needs a stellar.toml with a `SIGNING_KEY`.
+## Client Domain Verification
+
+Non-custodial wallets can prove their domain to the anchor. This allows the anchor to attribute requests to a specific wallet application. Your domain needs a stellar.toml with a `SIGNING_KEY`.
+
+### Local Signing
+
+When you have direct access to the client domain's signing key, you can sign locally.
 
 ```php
 <?php
@@ -165,23 +235,139 @@ $jwtToken = $webAuth->jwtToken(
 );
 ```
 
-### Remote Client Domain Signing
+### Remote Signing via Callback
 
-For remote signing, use the `clientDomainSigningCallback` parameter. Your callback receives a `SorobanAuthorizationEntry` and must return the signed entry. See the [SDK examples](https://github.com/Soneso/stellar-php-sdk/blob/main/examples/sep-0045-webauth-contracts.md) for a complete implementation.
+If the client domain signing key is on a remote server, use a callback function. The callback receives a `SorobanAuthorizationEntry` and must return the signed entry.
+
+```php
+<?php
+
+use Soneso\StellarSDK\SEP\WebAuthForContracts\WebAuthForContracts;
+use Soneso\StellarSDK\Soroban\SorobanAuthorizationEntry;
+use Soneso\StellarSDK\Crypto\KeyPair;
+use Soneso\StellarSDK\Network;
+use GuzzleHttp\Client;
+
+$contractId = "CCIBUCGPOHWMMMFPFTDWBSVHQRT4DIBJ7AD6BZJYDITBK2LCVBYW7HUQ";
+$signer = KeyPair::fromSeed("SXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX");
+
+$clientDomainSigningCallback = function(SorobanAuthorizationEntry $entry): SorobanAuthorizationEntry {
+    // Send the entry to your remote signing service
+    $httpClient = new Client();
+    $response = $httpClient->post('https://your-signing-server.com/sign-sep-45', [
+        'json' => [
+            'authorization_entry' => $entry->toBase64Xdr(),
+            'network_passphrase' => 'Test SDF Network ; September 2015'
+        ],
+        'headers' => ['Authorization' => 'Bearer YOUR_TOKEN']
+    ]);
+
+    $jsonData = json_decode($response->getBody()->__toString(), true);
+    return SorobanAuthorizationEntry::fromBase64Xdr($jsonData['authorization_entry']);
+};
+
+$webAuth = WebAuthForContracts::fromDomain("anchor.example.com", Network::testnet());
+
+$jwtToken = $webAuth->jwtToken(
+    $contractId,
+    [$signer],
+    homeDomain: "anchor.example.com",
+    clientDomain: "wallet.example.com",
+    clientDomainKeyPair: null,
+    clientDomainSigningCallback: $clientDomainSigningCallback
+);
+```
+
+## Step-by-Step Authentication
+
+For more control over the authentication process, you can execute each step individually. This is useful for debugging or when you need to customize the flow.
+
+```php
+<?php
+
+use Soneso\StellarSDK\SEP\WebAuthForContracts\WebAuthForContracts;
+use Soneso\StellarSDK\Soroban\SorobanServer;
+use Soneso\StellarSDK\Crypto\KeyPair;
+use Soneso\StellarSDK\Network;
+
+$contractAccountId = "CCIBUCGPOHWMMMFPFTDWBSVHQRT4DIBJ7AD6BZJYDITBK2LCVBYW7HUQ";
+$signerKeyPair = KeyPair::fromSeed("SXXXXX...");
+$homeDomain = "anchor.example.com";
+
+$webAuth = WebAuthForContracts::fromDomain($homeDomain, Network::testnet());
+
+try {
+    // Step 1: Get challenge from server
+    $challengeResponse = $webAuth->getChallenge($contractAccountId, $homeDomain);
+
+    // Step 2: Decode authorization entries from base64 XDR
+    $authEntries = $webAuth->decodeAuthorizationEntries(
+        $challengeResponse->getAuthorizationEntries()
+    );
+
+    // Step 3: Validate challenge (security checks)
+    $webAuth->validateChallenge($authEntries, $contractAccountId, $homeDomain);
+
+    // Step 4: Get current ledger for signature expiration
+    $sorobanServer = new SorobanServer("https://soroban-testnet.stellar.org");
+    $latestLedgerResponse = $sorobanServer->getLatestLedger();
+    $signatureExpirationLedger = $latestLedgerResponse->sequence + 10;
+
+    // Step 5: Sign authorization entries
+    $signedEntries = $webAuth->signAuthorizationEntries(
+        $authEntries,
+        $contractAccountId,
+        [$signerKeyPair],
+        $signatureExpirationLedger
+    );
+
+    // Step 6: Submit signed entries for JWT token
+    $jwtToken = $webAuth->sendSignedChallenge($signedEntries);
+
+    echo "JWT Token: " . $jwtToken . "\n";
+
+} catch (Exception $e) {
+    echo "Error: " . $e->getMessage() . "\n";
+}
+```
+
+## Request Format Configuration
+
+The SDK supports both `application/x-www-form-urlencoded` and `application/json` when submitting signed challenges. Form URL encoding is used by default for broader compatibility.
+
+```php
+<?php
+
+use Soneso\StellarSDK\SEP\WebAuthForContracts\WebAuthForContracts;
+use Soneso\StellarSDK\Network;
+
+$webAuth = WebAuthForContracts::fromDomain("anchor.example.com", Network::testnet());
+
+// Use JSON format instead of form-urlencoded
+$webAuth->setUseFormUrlEncoded(false);
+
+$jwtToken = $webAuth->jwtToken($contractId, [$signer]);
+```
 
 ## Error Handling
+
+The SDK provides specific exception types for different failure scenarios. Catching these allows you to provide appropriate user feedback and take corrective action.
 
 ```php
 <?php
 
 use Soneso\StellarSDK\SEP\WebAuthForContracts\WebAuthForContracts;
 use Soneso\StellarSDK\SEP\WebAuthForContracts\ContractChallengeValidationErrorInvalidContractAddress;
+use Soneso\StellarSDK\SEP\WebAuthForContracts\ContractChallengeValidationErrorInvalidFunctionName;
 use Soneso\StellarSDK\SEP\WebAuthForContracts\ContractChallengeValidationErrorSubInvocationsFound;
 use Soneso\StellarSDK\SEP\WebAuthForContracts\ContractChallengeValidationErrorInvalidServerSignature;
+use Soneso\StellarSDK\SEP\WebAuthForContracts\ContractChallengeValidationErrorInvalidNetworkPassphrase;
 use Soneso\StellarSDK\SEP\WebAuthForContracts\ContractChallengeValidationErrorMissingServerEntry;
 use Soneso\StellarSDK\SEP\WebAuthForContracts\ContractChallengeValidationErrorMissingClientEntry;
 use Soneso\StellarSDK\SEP\WebAuthForContracts\ContractChallengeRequestErrorResponse;
 use Soneso\StellarSDK\SEP\WebAuthForContracts\SubmitContractChallengeErrorResponseException;
+use Soneso\StellarSDK\SEP\WebAuthForContracts\SubmitContractChallengeTimeoutResponseException;
+use Soneso\StellarSDK\SEP\WebAuthForContracts\SubmitContractChallengeUnknownResponseException;
 use Soneso\StellarSDK\Crypto\KeyPair;
 use Soneso\StellarSDK\Network;
 
@@ -191,29 +377,52 @@ try {
     $jwtToken = $webAuth->jwtToken($contractId, [$signer]);
     
 } catch (ContractChallengeValidationErrorInvalidContractAddress $e) {
-    // Server's contract doesn't match stellar.toml
-    echo "Security error: contract mismatch\n";
+    // Server's contract address doesn't match stellar.toml - potential security issue
+    echo "Security error: contract address mismatch\n";
     
 } catch (ContractChallengeValidationErrorSubInvocationsFound $e) {
-    // Challenge contains unauthorized sub-invocations
-    echo "Security error: sub-invocations detected\n";
+    // Challenge contains unauthorized sub-invocations - do NOT sign
+    echo "Security error: sub-invocations detected. Report to anchor.\n";
     
 } catch (ContractChallengeValidationErrorInvalidServerSignature $e) {
-    // Server signature is invalid
-    echo "Security error: bad server signature\n";
+    // Server's signature is invalid - potential man-in-the-middle attack
+    echo "Security error: invalid server signature\n";
+    
+} catch (ContractChallengeValidationErrorInvalidNetworkPassphrase $e) {
+    // Network passphrase mismatch - wrong network configuration
+    echo "Configuration error: network passphrase mismatch\n";
+    
+} catch (ContractChallengeValidationErrorInvalidFunctionName $e) {
+    // Function name is not 'web_auth_verify' - invalid challenge
+    echo "Invalid challenge: wrong function name\n";
     
 } catch (ContractChallengeValidationErrorMissingServerEntry $e) {
-    echo "Invalid challenge: no server entry\n";
+    // No authorization entry for server account
+    echo "Invalid challenge: missing server entry\n";
     
 } catch (ContractChallengeValidationErrorMissingClientEntry $e) {
-    echo "Invalid challenge: no client entry\n";
+    // No authorization entry for client account
+    echo "Invalid challenge: missing client entry\n";
     
 } catch (ContractChallengeRequestErrorResponse $e) {
+    // Server returned an error for challenge request
     echo "Challenge request failed: " . $e->getMessage() . "\n";
     
 } catch (SubmitContractChallengeErrorResponseException $e) {
-    // Often means signer isn't registered in contract's __check_auth
-    echo "Auth failed: " . $e->getMessage() . "\n";
+    // Server rejected the signed challenge
+    // Common cause: signer not registered in contract's __check_auth
+    echo "Authentication failed: " . $e->getMessage() . "\n";
+
+} catch (SubmitContractChallengeTimeoutResponseException $e) {
+    // Server timed out processing the challenge
+    echo "Server timeout - please try again\n";
+
+} catch (SubmitContractChallengeUnknownResponseException $e) {
+    // Unexpected server response
+    echo "Unexpected error (HTTP " . $e->getCode() . "): " . $e->getMessage() . "\n";
+
+} catch (Exception $e) {
+    echo "Unexpected error: " . $e->getMessage() . "\n";
 }
 ```
 
@@ -222,19 +431,44 @@ try {
 | Error | Cause | Solution |
 |-------|-------|----------|
 | `SubmitContractChallengeErrorResponseException` | Signer not in contract's `__check_auth` | Verify signer is registered in contract storage |
-| `ContractChallengeValidationErrorInvalidContractAddress` | Contract address mismatch | Check stellar.toml WEB_AUTH_CONTRACT_ID |
+| `ContractChallengeValidationErrorInvalidContractAddress` | Contract address mismatch | Check stellar.toml `WEB_AUTH_CONTRACT_ID` |
 | `ContractChallengeValidationErrorSubInvocationsFound` | Malicious challenge | Don't sign; report to anchor |
+| `ContractChallengeValidationErrorInvalidNetworkPassphrase` | Wrong network | Check you're using testnet vs pubnet correctly |
+| `ContractChallengeValidationErrorInvalidServerSignature` | Invalid server signature | Server may be compromised or misconfigured |
+
+## Security Considerations
+
+The SDK performs several critical security validations automatically:
+
+1. **Contract Address Validation**: Verifies `contract_address` in all authorization entries matches `WEB_AUTH_CONTRACT_ID` from stellar.toml
+
+2. **No Sub-Invocations**: Rejects challenges containing sub-invocations, which could authorize unintended operations
+
+3. **Server Signature Verification**: Verifies the server signed the challenge with the key from stellar.toml
+
+4. **Function Name Validation**: Only accepts `web_auth_verify` function
+
+5. **Network Passphrase Validation**: When provided by server, validates the passphrase matches
+
+6. **Nonce Consistency**: Verifies nonce is consistent across all authorization entries
+
+7. **Signature Expiration**: Sets tight expiration windows (current ledger + 10) for replay protection
+
+**JWT Token Security**: Store JWT tokens securely. Never expose them in logs, URLs, or insecure storage. Use HTTPS for all requests.
 
 ## Using the JWT Token
+
+Once authenticated, include the JWT token in the `Authorization` header when making requests to protected SEP services.
 
 ```php
 <?php
 
 use GuzzleHttp\Client;
 
+$jwtToken = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...";
 $httpClient = new Client();
 
-// Use token with SEP-24
+// Use token with SEP-24 deposit
 $response = $httpClient->post('https://anchor.example.com/sep24/transactions/deposit/interactive', [
     'headers' => ['Authorization' => 'Bearer ' . $jwtToken],
     'json' => ['asset_code' => 'USDC']
@@ -246,6 +480,33 @@ $response = $httpClient->get('https://anchor.example.com/kyc/customer', [
 ]);
 ```
 
+## Network Support
+
+The SDK supports both testnet and public (mainnet) networks. Use the appropriate network constant when creating the service.
+
+```php
+<?php
+
+use Soneso\StellarSDK\Network;
+use Soneso\StellarSDK\SEP\WebAuthForContracts\WebAuthForContracts;
+
+// Testnet
+$webAuth = WebAuthForContracts::fromDomain("testnet.anchor.com", Network::testnet());
+
+// Public network (mainnet)
+$webAuth = WebAuthForContracts::fromDomain("anchor.com", Network::public());
+```
+
+## Reference Contracts
+
+For SEP-45 authentication, the client contract must implement `__check_auth` to define authorization rules. The Stellar Anchor Platform provides a reference implementation:
+
+- [Account Contract](https://github.com/stellar/anchor-platform/tree/main/soroban/contracts/account) - A sample client contract that implements `__check_auth` with Ed25519 signature verification
+
+## Extended Documentation
+
+For more detailed examples including step-by-step authentication flows and advanced usage patterns, see the [SEP-45 examples documentation](https://github.com/Soneso/stellar-php-sdk/blob/main/examples/sep-0045-webauth-contracts.md).
+
 ## Related SEPs
 
 - [SEP-10](sep-10.md) - Authentication for traditional accounts (G... addresses)
@@ -256,4 +517,4 @@ $response = $httpClient->get('https://anchor.example.com/kyc/customer', [
 ## Reference
 
 - [SEP-45 Specification](https://github.com/stellar/stellar-protocol/blob/master/ecosystem/sep-0045.md)
-- [Account Contract Example](https://github.com/stellar/anchor-platform/tree/main/soroban/contracts/account)
+- [Stellar PHP SDK](https://github.com/Soneso/stellar-php-sdk)
