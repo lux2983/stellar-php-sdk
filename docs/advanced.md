@@ -205,14 +205,13 @@ try {
     
     if ($errorResponse !== null && $errorResponse->getExtras() !== null) {
         $extras = $errorResponse->getExtras();
-        $resultCodes = $extras->getResultCodes();
         
         // Transaction-level error
-        $txCode = $resultCodes->getTransactionResultCode();
+        $txCode = $extras->getResultCodesTransaction();
         echo "Transaction failed: {$txCode}\n";
         
         // Operation-level errors (if tx_failed)
-        foreach ($resultCodes->getOperationsResultCodes() as $i => $opCode) {
+        foreach ($extras->getResultCodesOperation() ?? [] as $i => $opCode) {
             if ($opCode !== 'op_success') {
                 echo "Operation {$i} failed: {$opCode}\n";
             }

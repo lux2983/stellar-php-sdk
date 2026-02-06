@@ -375,10 +375,9 @@ try {
     $errorResponse = $e->getHorizonErrorResponse();
     if ($errorResponse) {
         $extras = $errorResponse->getExtras();
-        if ($extras && isset($extras['result_codes'])) {
-            $codes = $extras['result_codes'];
-            echo "Transaction: " . ($codes['transaction'] ?? 'unknown') . "\n";
-            foreach ($codes['operations'] ?? [] as $i => $opCode) {
+        if ($extras) {
+            echo "Transaction: " . ($extras->getResultCodesTransaction() ?? 'unknown') . "\n";
+            foreach ($extras->getResultCodesOperation() ?? [] as $i => $opCode) {
                 echo "Operation $i: $opCode\n";
             }
         }

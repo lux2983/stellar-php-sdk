@@ -801,8 +801,10 @@ try {
 } catch (HorizonRequestException $e) {
     echo "Error: " . $e->getMessage();
     $horizonError = $e->getHorizonErrorResponse();
-    if ($horizonError) {
-        echo "Result codes: " . json_encode($horizonError->getExtras()->getResultCodes());
+    if ($horizonError && $horizonError->getExtras()) {
+        $extras = $horizonError->getExtras();
+        echo "Transaction result: " . $extras->getResultCodesTransaction();
+        echo "Operation results: " . json_encode($extras->getResultCodesOperation());
     }
 }
 
@@ -865,11 +867,11 @@ try {
         $extras = $horizonError->getExtras();
         if ($extras) {
             // Result codes explain why the transaction failed
-            $resultCodes = $extras->getResultCodes();
-            echo "Transaction result: " . $resultCodes->getTransaction();
+            echo "Transaction result: " . $extras->getResultCodesTransaction();
             
             // Per-operation result codes
-            foreach ($resultCodes->getOperations() as $opResult) {
+            $opResults = $extras->getResultCodesOperation() ?? [];
+            foreach ($opResults as $opResult) {
                 echo "Operation result: " . $opResult;
             }
         }
