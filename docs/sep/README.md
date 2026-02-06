@@ -12,21 +12,21 @@ Think of SEPs as the "rules of the road" that let different Stellar applications
 
 | SEP | Title | Documentation |
 |-----|-------|---------------|
-| SEP-01 | Stellar TOML | [sep-01-stellar-toml.md](sep-01-stellar-toml.md) |
-| SEP-02 | Federation Protocol | [sep-02-federation.md](sep-02-federation.md) |
-| SEP-05 | Key Derivation Methods | [sep-05-key-derivation.md](sep-05-key-derivation.md) |
-| SEP-06 | Programmatic Deposit and Withdrawal | [sep-06-transfer.md](sep-06-transfer.md) |
-| SEP-07 | URI Scheme | [sep-07-uri-scheme.md](sep-07-uri-scheme.md) |
-| SEP-08 | Regulated Assets | [sep-08-regulated.md](sep-08-regulated.md) |
-| SEP-10 | Web Authentication | [sep-10-auth.md](sep-10-auth.md) |
-| SEP-11 | Transaction Representation (Txrep) | [sep-11-txrep.md](sep-11-txrep.md) |
-| SEP-12 | KYC API | [sep-12-kyc.md](sep-12-kyc.md) |
-| SEP-24 | Interactive Deposit and Withdrawal | [sep-24-interactive.md](sep-24-interactive.md) |
-| SEP-30 | Account Recovery | [sep-30-recovery.md](sep-30-recovery.md) |
-| SEP-31 | Cross-Border Payments | [sep-31-cross-border.md](sep-31-cross-border.md) |
-| SEP-38 | Anchor RFQ API | [sep-38-quotes.md](sep-38-quotes.md) |
-| SEP-45 | Contract Account Authentication | [sep-45-contract-auth.md](sep-45-contract-auth.md) |
-| SEP-53 | Memos for Custodial Accounts | [sep-53-memo.md](sep-53-memo.md) |
+| SEP-01 | Stellar TOML | [sep-01.md](sep-01.md) |
+| SEP-02 | Federation Protocol | [sep-02.md](sep-02.md) |
+| SEP-05 | Key Derivation Methods | [sep-05.md](sep-05.md) |
+| SEP-06 | Programmatic Deposit and Withdrawal | [sep-06.md](sep-06.md) |
+| SEP-07 | URI Scheme | [sep-07.md](sep-07.md) |
+| SEP-08 | Regulated Assets | [sep-08.md](sep-08.md) |
+| SEP-10 | Web Authentication | [sep-10.md](sep-10.md) |
+| SEP-11 | Transaction Representation (Txrep) | [sep-11.md](sep-11.md) |
+| SEP-12 | KYC API | [sep-12.md](sep-12.md) |
+| SEP-24 | Interactive Deposit and Withdrawal | [sep-24.md](sep-24.md) |
+| SEP-30 | Account Recovery | [sep-30.md](sep-30.md) |
+| SEP-31 | Cross-Border Payments | [sep-31.md](sep-31.md) |
+| SEP-38 | Anchor RFQ API | [sep-38.md](sep-38.md) |
+| SEP-45 | Contract Account Authentication | [sep-45.md](sep-45.md) |
+| SEP-53 | Message Signing | [sep-53.md](sep-53.md) |
 
 ## Which SEP Do I Need?
 
@@ -69,7 +69,7 @@ The issuer's approval server reviews each transaction and either approves, rejec
 | Payment requests via URI | SEP-07 |
 | Human-readable transaction format | SEP-11 |
 | Account recovery via custodians | SEP-30 |
-| Custodial account identification | SEP-53 |
+| Message signing and verification | SEP-53 |
 | Soroban contract authentication | SEP-45 |
 
 ## Learning More

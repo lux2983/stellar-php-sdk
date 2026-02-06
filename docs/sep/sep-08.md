@@ -393,5 +393,5 @@ try {
 ## Related SEPs
 
 - [SEP-01](sep-01.md) - stellar.toml (defines regulated assets)
-- [SEP-09](sep-09.md) - Standard KYC fields (used in action_required flows)
+- [SEP-09](https://github.com/stellar/stellar-protocol/blob/master/ecosystem/sep-0009.md) - Standard KYC fields (used in action_required flows)
 - [SEP-10](sep-10.md) - Web authentication (may be required by approval server)

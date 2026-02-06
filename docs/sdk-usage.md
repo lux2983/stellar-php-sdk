@@ -194,7 +194,7 @@ use Soneso\StellarSDK\CreateAccountOperationBuilder;
 use Soneso\StellarSDK\ChangeTrustOperationBuilder;
 use Soneso\StellarSDK\PaymentOperationBuilder;
 use Soneso\StellarSDK\TransactionBuilder;
-use Soneso\StellarSDK\AssetTypeCreditAlphaNum4;
+use Soneso\StellarSDK\AssetTypeCreditAlphanum4;
 
 $sdk = StellarSDK::getTestNetInstance();
 
@@ -202,7 +202,7 @@ $funderKeyPair = KeyPair::fromSeed("SFUNDER...");
 $newAccountKeyPair = KeyPair::random();
 $funder = $sdk->requestAccount($funderKeyPair->getAccountId());
 
-$usdAsset = new AssetTypeCreditAlphaNum4("USD", "GISSUER...");
+$usdAsset = new AssetTypeCreditAlphanum4("USD", "GISSUER...");
 
 // All operations execute atomically
 $transaction = (new TransactionBuilder($funder))
@@ -279,13 +279,13 @@ use Soneso\StellarSDK\Asset;
 use Soneso\StellarSDK\PaymentOperationBuilder;
 use Soneso\StellarSDK\PathPaymentStrictSendOperationBuilder;
 use Soneso\StellarSDK\PathPaymentStrictReceiveOperationBuilder;
-use Soneso\StellarSDK\AssetTypeCreditAlphaNum4;
+use Soneso\StellarSDK\AssetTypeCreditAlphanum4;
 
 // Native XLM payment
 $paymentOp = (new PaymentOperationBuilder("GDEST...", Asset::native(), "100"))->build();
 
 // Custom asset payment
-$usdAsset = new AssetTypeCreditAlphaNum4("USD", "GISSUER...");
+$usdAsset = new AssetTypeCreditAlphanum4("USD", "GISSUER...");
 $paymentOp = (new PaymentOperationBuilder("GDEST...", $usdAsset, "50.25"))->build();
 
 // Path payment strict send: send exactly 100 XLM, receive at least 95 USD
@@ -343,10 +343,10 @@ $addSignerOp = (new SetOptionsOperationBuilder())->setSigner($signerKey, 1)->bui
 <?php
 use Soneso\StellarSDK\ChangeTrustOperationBuilder;
 use Soneso\StellarSDK\SetTrustLineFlagsOperationBuilder;
-use Soneso\StellarSDK\AssetTypeCreditAlphaNum4;
+use Soneso\StellarSDK\AssetTypeCreditAlphanum4;
 use Soneso\StellarSDK\Xdr\XdrTrustLineFlags;
 
-$usdAsset = new AssetTypeCreditAlphaNum4("USD", "GISSUER...");
+$usdAsset = new AssetTypeCreditAlphanum4("USD", "GISSUER...");
 
 // Create trustline
 $trustOp = (new ChangeTrustOperationBuilder($usdAsset, "10000"))->build();
@@ -368,9 +368,9 @@ use Soneso\StellarSDK\Asset;
 use Soneso\StellarSDK\ManageSellOfferOperationBuilder;
 use Soneso\StellarSDK\ManageBuyOfferOperationBuilder;
 use Soneso\StellarSDK\CreatePassiveSellOfferOperationBuilder;
-use Soneso\StellarSDK\AssetTypeCreditAlphaNum4;
+use Soneso\StellarSDK\AssetTypeCreditAlphanum4;
 
-$usdAsset = new AssetTypeCreditAlphaNum4("USD", "GISSUER...");
+$usdAsset = new AssetTypeCreditAlphanum4("USD", "GISSUER...");
 
 // Create sell offer: sell 100 XLM at 0.20 USD per XLM
 $sellOp = (new ManageSellOfferOperationBuilder(Asset::native(), $usdAsset, "100", "0.20"))->build();
@@ -425,12 +425,12 @@ $claimOp = (new ClaimClaimableBalanceOperationBuilder("00000000abc123..."))->bui
 use Soneso\StellarSDK\Asset;
 use Soneso\StellarSDK\Price;
 use Soneso\StellarSDK\ChangeTrustOperationBuilder;
-use Soneso\StellarSDK\AssetTypeCreditAlphaNum4;
+use Soneso\StellarSDK\AssetTypeCreditAlphanum4;
 use Soneso\StellarSDK\AssetTypePoolShare;
 use Soneso\StellarSDK\LiquidityPoolDepositOperationBuilder;
 use Soneso\StellarSDK\LiquidityPoolWithdrawOperationBuilder;
 
-$usdAsset = new AssetTypeCreditAlphaNum4("USD", "GISSUER...");
+$usdAsset = new AssetTypeCreditAlphanum4("USD", "GISSUER...");
 
 // Trust pool shares (assets in canonical order)
 $poolShareAsset = new AssetTypePoolShare(Asset::native(), $usdAsset);
@@ -920,17 +920,17 @@ $isValid = $publicKey->verifyMessage($message, base64_decode($signatureBase64));
 ```php
 <?php
 use Soneso\StellarSDK\Asset;
-use Soneso\StellarSDK\AssetTypeCreditAlphaNum4;
-use Soneso\StellarSDK\AssetTypeCreditAlphaNum12;
+use Soneso\StellarSDK\AssetTypeCreditAlphanum4;
+use Soneso\StellarSDK\AssetTypeCreditAlphanum12;
 
 // Native XLM
 $xlm = Asset::native();
 
 // 4-character code
-$usd = new AssetTypeCreditAlphaNum4("USD", "GISSUER...");
+$usd = new AssetTypeCreditAlphanum4("USD", "GISSUER...");
 
 // 5-12 character code
-$myToken = new AssetTypeCreditAlphaNum12("MYTOKEN", "GISSUER...");
+$myToken = new AssetTypeCreditAlphanum12("MYTOKEN", "GISSUER...");
 
 // Auto-detect code length
 $asset = Asset::createNonNativeAsset("USD", "GISSUER...");
@@ -949,12 +949,12 @@ use Soneso\StellarSDK\Crypto\KeyPair;
 use Soneso\StellarSDK\Network;
 use Soneso\StellarSDK\ChangeTrustOperationBuilder;
 use Soneso\StellarSDK\TransactionBuilder;
-use Soneso\StellarSDK\AssetTypeCreditAlphaNum4;
+use Soneso\StellarSDK\AssetTypeCreditAlphanum4;
 
 $sdk = StellarSDK::getTestNetInstance();
 $trustorKeyPair = KeyPair::fromSeed("STRUSTOR...");
 $trustor = $sdk->requestAccount($trustorKeyPair->getAccountId());
-$usdAsset = new AssetTypeCreditAlphaNum4("USD", "GISSUER...");
+$usdAsset = new AssetTypeCreditAlphanum4("USD", "GISSUER...");
 
 // Create trustline
 $trustOp = (new ChangeTrustOperationBuilder($usdAsset, "10000"))->build();
