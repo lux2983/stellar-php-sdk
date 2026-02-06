@@ -132,8 +132,8 @@ use Soneso\StellarSDK\Crypto\KeyPair;
 use Soneso\StellarSDK\SEP\Derivation\Mnemonic;
 
 // Generate mnemonic — choose your preferred length:
-$mnemonic = Mnemonic::generate12WordsMnemonic();  // 12 words
-// or: $mnemonic = Mnemonic::generate24WordsMnemonic();  // 24 words (more secure)
+$mnemonic = Mnemonic::generate24WordsMnemonic();  // 24 words (recommended)
+// or: $mnemonic = Mnemonic::generate12WordsMnemonic();  // 12 words
 
 $words = implode(" ", $mnemonic->words);
 // Store these words securely — they control all derived accounts
