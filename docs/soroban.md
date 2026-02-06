@@ -47,6 +47,8 @@ Direct communication with Soroban RPC nodes for low-level operations.
 
 ### Connecting to RPC
 
+Connect to a Soroban RPC node to send requests and receive responses.
+
 ```php
 <?php
 use Soneso\StellarSDK\Soroban\SorobanServer;
@@ -160,7 +162,7 @@ $info = $server->loadContractInfoForWasmId($wasmId);
 
 ### Get Ledger Entries
 
-Directly inspect ledger state including contract code and data.
+Query raw ledger entries by their keys. Use when you need direct access to ledger state data.
 
 ```php
 <?php
@@ -214,6 +216,8 @@ High-level API for contract interaction.
 
 ### Creating a Client
 
+Set up a SorobanClient instance for interacting with a specific contract.
+
 ```php
 <?php
 
@@ -234,6 +238,8 @@ $spec = $client->getContractSpec();
 ```
 
 ### Invoking Methods
+
+Call contract functions to read data or submit state changes.
 
 ```php
 <?php
@@ -275,6 +281,8 @@ $result = $client->invokeMethod('expensive_op', [], methodOptions: $methodOption
 ```
 
 ## Installing and Deploying
+
+Put your contract on the network. Install uploads the WASM bytecode once; deploy creates contract instances from that code.
 
 ### Installation
 
@@ -500,6 +508,8 @@ Create XDR values manually for contract arguments.
 
 #### Primitives
 
+Basic data types like numbers, booleans, and strings.
+
 ```php
 <?php
 use Soneso\StellarSDK\Xdr\XdrSCVal;
@@ -545,6 +555,8 @@ echo gmp_strval($bigInt);
 
 #### Addresses
 
+Account and contract addresses for referencing entities on the network.
+
 ```php
 <?php
 use Soneso\StellarSDK\Soroban\Address;
@@ -557,6 +569,8 @@ $contract = Address::fromContractId('CABC...')->toXdrSCVal();
 ```
 
 #### Collections
+
+Arrays (vectors) and key-value pairs (maps) for structured data.
 
 ```php
 <?php
@@ -610,6 +624,8 @@ For low-level control, use `nativeToXdrSCVal()` with explicit type definitions.
 
 #### Void and Option (Nullable)
 
+Empty values and nullable types for optional data.
+
 ```php
 <?php
 use Soneso\StellarSDK\Xdr\XdrSCSpecTypeDef;
@@ -629,6 +645,8 @@ $val = $spec->nativeToXdrSCVal(null, $def);        // Void (none)
 
 #### Vectors with Element Type
 
+Strongly-typed arrays where all elements share the same type.
+
 ```php
 <?php
 use Soneso\StellarSDK\Xdr\XdrSCSpecTypeDef;
@@ -641,6 +659,8 @@ $val = $spec->nativeToXdrSCVal(["a", "b", "c"], $def);
 ```
 
 #### Maps with Key/Value Types
+
+Strongly-typed key-value mappings with specific types for keys and values.
 
 ```php
 <?php
@@ -662,6 +682,8 @@ $val = $spec->nativeToXdrSCVal([
 
 #### Tuples
 
+Fixed-size collections of values where each position has a specific type.
+
 ```php
 <?php
 use Soneso\StellarSDK\Xdr\XdrSCSpecTypeDef;
@@ -677,6 +699,8 @@ $val = $spec->nativeToXdrSCVal(["hello", true, 42], $def);
 ```
 
 #### Bytes and BytesN
+
+Binary data of variable or fixed length for hashes, keys, and raw data.
 
 ```php
 <?php
@@ -1108,6 +1132,8 @@ Wrap a classic Stellar asset as a Soroban token contract.
 
 #### With Asset
 
+Deploy a contract for an existing Stellar asset (like USDC).
+
 ```php
 <?php
 use Soneso\StellarSDK\Asset;
@@ -1124,6 +1150,8 @@ $sacOp = (new InvokeHostFunctionOperationBuilder(
 ```
 
 #### With Source Account
+
+Deploy a contract representing the native balance of a Stellar account.
 
 ```php
 <?php

@@ -80,6 +80,8 @@ A **transaction** groups one or more **operations** that execute atomically. Com
 
 ## KeyPair Management
 
+Manage cryptographic keys for signing transactions and identifying accounts.
+
 ### Generate a Random KeyPair
 
 Create a new wallet with a random keypair. The account ID is your public address; the secret seed is your private key for signing transactions.
@@ -149,6 +151,8 @@ $keyPair = KeyPair::fromMnemonic($mnemonic, 0);
 ```
 
 ## Account Operations
+
+Create accounts, fund them, and query their data from the network.
 
 ### Fund on Testnet
 
@@ -241,6 +245,8 @@ foreach ($account->getSigners() as $signer) {
 ```
 
 ## Transaction Building
+
+Construct transactions by adding operations, setting fees, and preparing for submission.
 
 ### Builder Pattern
 
