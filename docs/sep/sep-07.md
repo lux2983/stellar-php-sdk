@@ -308,7 +308,7 @@ try {
     
     if ($response->submitTransactionResponse !== null) {
         if (!$response->submitTransactionResponse->isSuccessful()) {
-            echo "Transaction failed: " . $response->submitTransactionResponse->getExtras()->getResultCodes()->getTransactionResultCode() . PHP_EOL;
+            echo "Transaction failed: " . $response->submitTransactionResponse->getExtras()->getResultCodesTransaction() . PHP_EOL;
         }
     }
 } catch (Exception $e) {
