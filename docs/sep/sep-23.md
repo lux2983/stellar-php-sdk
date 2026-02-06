@@ -6,7 +6,7 @@ SEP-23 defines how Stellar encodes addresses between raw binary data and human-r
 
 See the [SEP-23 specification](https://github.com/stellar/stellar-protocol/blob/master/ecosystem/sep-0023.md) for protocol details.
 
-## Quick Example
+## Quick example
 
 This example demonstrates the most common strkey operations: generating a keypair, validating addresses, and converting between formats.
 
@@ -30,7 +30,7 @@ $rawPublicKey = StrKey::decodeAccountId($accountId);
 $encoded = StrKey::encodeAccountId($rawPublicKey);
 ```
 
-## Account IDs and Secret Seeds
+## Account IDs and secret seeds
 
 Account IDs (G...) are public keys that identify accounts on the network. Secret seeds (S...) are private keys used for signing transactions — never share these publicly.
 
@@ -58,7 +58,7 @@ $encodedSeed = StrKey::encodeSeed($rawPrivateKey);
 $accountId = StrKey::accountIdFromSeed($secretSeed);
 ```
 
-## Muxed Accounts (M...)
+## Muxed accounts (M...)
 
 Muxed accounts (defined in [CAP-27](https://github.com/stellar/stellar-protocol/blob/master/core/cap-0027.md)) allow you to multiplex multiple virtual accounts onto a single Stellar account. This is useful for exchanges, payment processors, and custodial services that need to track funds for many users without creating separate on-chain accounts.
 
@@ -68,7 +68,7 @@ A muxed account combines:
 
 When encoded, muxed accounts start with "M" instead of "G".
 
-### Creating Muxed Accounts
+### Creating muxed accounts
 
 You can create muxed accounts by combining a G-address with a numeric ID, or by parsing an M-address string.
 
@@ -92,7 +92,7 @@ $muxedAccount = MuxedAccount::fromAccountId($accountId, $userId);
 $parsedMuxed = MuxedAccount::fromAccountId('MA7QYNF7SOWQ3GLR2BGMZEHXAVIRZA4KVWLTJJFC7MGXUA74P7UJUAAAAAAAAAAAACJUQ');
 ```
 
-### Extracting Muxed Account Components
+### Extracting muxed account components
 
 When you receive an M-address, you can extract both the underlying G-address and the numeric ID.
 
@@ -117,7 +117,7 @@ echo "User ID: " . $id . PHP_EOL;
 $accountId = $muxedAccount->getAccountId();
 ```
 
-### Using Muxed Accounts in Transactions
+### Using muxed accounts in transactions
 
 Muxed accounts can be used as source accounts and destinations in operations. The Stellar network processes these using the underlying G-address, while preserving the ID for tracking purposes.
 
@@ -161,7 +161,7 @@ $transaction = (new TransactionBuilder($sourceAccount))
 $transaction->sign($senderKeyPair, Network::testnet());
 ```
 
-### Low-Level Muxed Account Encoding
+### Low-level muxed account encoding
 
 For direct manipulation of muxed account binary data, use the StrKey class methods.
 
@@ -182,7 +182,7 @@ $rawData = StrKey::decodeMuxedAccountId($muxedAccountId);
 $encoded = StrKey::encodeMuxedAccountId($rawData);
 ```
 
-## Pre-Auth TX and SHA-256 Hashes
+## Pre-auth TX and SHA-256 hashes
 
 Pre-auth transaction hashes (T...) authorize specific transactions in advance. SHA-256 hashes (X...) are for hash-locked transactions that require revealing a preimage to sign.
 
@@ -227,7 +227,7 @@ $encoded = StrKey::encodeContractId($raw);
 $encodedFromHex = StrKey::encodeContractIdHex($hex);
 ```
 
-## Signed Payloads (P...)
+## Signed payloads (P...)
 
 Signed payloads (defined in [CAP-40](https://github.com/stellar/stellar-protocol/blob/master/core/cap-0040.md)) combine a public key with arbitrary payload data. They're used for delegated signing scenarios where a signature covers both the transaction and additional application-specific data.
 
@@ -248,7 +248,7 @@ $decoded = StrKey::decodeSignedPayload($signedPayload);
 echo $decoded->getSignerAccountId()->getAccountId() . PHP_EOL;
 ```
 
-## Liquidity Pool and Claimable Balance IDs
+## Liquidity pool and claimable balance IDs
 
 Pool IDs (L...) identify AMM liquidity pools. Claimable balance IDs (B...) reference claimable balance entries. Both support hex encoding for interoperability with APIs.
 
@@ -270,7 +270,7 @@ StrKey::isValidClaimableBalanceId($balanceId); // true
 $decoded = StrKey::decodeClaimableBalanceIdHex($balanceId);
 ```
 
-## Version Bytes Reference
+## Version bytes reference
 
 Each strkey type has a unique version byte that determines its prefix character:
 
@@ -286,7 +286,7 @@ Each strkey type has a unique version byte that determines its prefix character:
 | L | Liquidity Pool ID | AMM liquidity pool |
 | B | Claimable Balance | Claimable balance entry |
 
-## Error Handling
+## Error handling
 
 Invalid addresses throw `InvalidArgumentException`. Use validation methods to check addresses before decoding to avoid exceptions in user-facing code.
 
@@ -324,7 +324,7 @@ try {
 }
 ```
 
-### Common Validation Errors
+### Common validation errors
 
 The SEP-23 spec defines several invalid strkey cases that implementations must reject:
 
@@ -334,7 +334,7 @@ The SEP-23 spec defines several invalid strkey cases that implementations must r
 - **Invalid base32 characters**: Only A-Z and 2-7 are valid
 - **Invalid padding**: Strkeys must not contain `=` padding characters
 
-## Related SEPs
+## Related specifications
 
 - [SEP-05 Key Derivation](sep-05.md) — Deriving keypairs from mnemonic phrases
 - [SEP-10 Web Authentication](sep-10.md) — Uses account IDs for authentication challenges

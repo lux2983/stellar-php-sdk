@@ -10,7 +10,7 @@ Use SEP-24 when:
 
 See the [SEP-24 specification](https://github.com/stellar/stellar-protocol/blob/master/ecosystem/sep-0024.md) for protocol details.
 
-## Quick Example
+## Quick example
 
 This example shows how to start a deposit flow. The anchor returns a URL where users complete the deposit process interactively:
 
@@ -38,7 +38,7 @@ echo "Open: $interactiveUrl\n";
 echo "Transaction ID: $transactionId\n";
 ```
 
-## Creating the Interactive Service
+## Creating the interactive service
 
 The `InteractiveService` class provides all SEP-24 operations. You can create it from an anchor's domain (which automatically discovers the transfer server URL from the stellar.toml file) or by providing a direct URL.
 
@@ -79,7 +79,7 @@ $httpClient = new Client([
 $service = InteractiveService::fromDomain("testanchor.stellar.org", $httpClient);
 ```
 
-## Getting Anchor Information
+## Getting anchor information
 
 Before starting a deposit or withdrawal, query the `/info` endpoint to discover what assets the anchor supports, their fee structures, and feature capabilities:
 
@@ -135,11 +135,11 @@ if ($feeInfo !== null && $feeInfo->enabled) {
 }
 ```
 
-## Deposit Flow
+## Deposit flow
 
 A deposit converts external funds (bank transfer, card, crypto from another chain, etc.) into Stellar tokens sent to your account. The user interacts with the anchor's web interface to provide payment details and complete KYC if required.
 
-### Basic Deposit
+### Basic deposit
 
 Start a deposit by specifying the asset you want to receive. The anchor returns a URL to open in a browser or webview:
 
@@ -165,7 +165,7 @@ $transactionId = $response->id;
 // Then poll for status updates (see "Tracking Transactions" below)
 ```
 
-### Deposit with Amount and Account Options
+### Deposit with amount and account options
 
 You can specify an amount, destination account (if different from the authenticated account), and memo for the deposit:
 
@@ -193,7 +193,7 @@ $request->lang = "en-US";
 $response = $service->deposit($request);
 ```
 
-### Deposit with Asset Issuer
+### Deposit with asset issuer
 
 When the anchor supports multiple issuers for the same asset code, specify which issuer you want:
 
@@ -213,7 +213,7 @@ $request->assetIssuer = "GDUKMGUGDZQK6YHYA5Z6AY2G4XDSZPSZ3SW5UN3ARVMO6QSRDWP5YLE
 $response = $service->deposit($request);
 ```
 
-### Deposit with SEP-38 Quote
+### Deposit with SEP-38 quote
 
 For cross-asset deposits (e.g., deposit EUR to receive USDC), use a SEP-38 quote to lock in an exchange rate:
 
@@ -238,7 +238,7 @@ $request->amount = 100.00; // Must match the quote's sell_amount
 $response = $service->deposit($request);
 ```
 
-### Pre-filling KYC Data
+### Pre-filling KYC data
 
 Speed up the interactive flow by providing KYC data upfront. The anchor will pre-fill these fields in their form:
 
@@ -271,7 +271,7 @@ $response = $service->deposit($request);
 // The anchor will pre-fill these fields in the interactive form
 ```
 
-### Pre-filling Organization KYC Data
+### Pre-filling organization KYC data
 
 For business accounts, provide organization KYC fields:
 
@@ -301,7 +301,7 @@ $request->kycFields = $kycFields;
 $response = $service->deposit($request);
 ```
 
-### Custom Fields and Files
+### Custom fields and files
 
 For anchor-specific KYC requirements not covered by standard fields, use custom fields and files:
 
@@ -331,7 +331,7 @@ $request->customFiles = [
 $response = $service->deposit($request);
 ```
 
-### Deposit with Claimable Balance Support
+### Deposit with claimable balance support
 
 If your account doesn't have a trustline for the asset, request that the anchor use claimable balances:
 
@@ -353,7 +353,7 @@ $response = $service->deposit($request);
 // Check the transaction's claimableBalanceId field after completion
 ```
 
-### Deposit with SEP-12 Customer ID
+### Deposit with SEP-12 customer ID
 
 If you have an existing customer ID from SEP-12 KYC, include it to link the transaction:
 
@@ -373,7 +373,7 @@ $request->customerId = "customer-id-from-sep12";
 $response = $service->deposit($request);
 ```
 
-### Deposit Native XLM
+### Deposit native XLM
 
 To deposit and receive native XLM (lumens), use the special `native` asset code:
 
@@ -393,11 +393,11 @@ $request->assetCode = "native";
 $response = $service->deposit($request);
 ```
 
-## Withdrawal Flow
+## Withdrawal flow
 
 A withdrawal converts Stellar tokens into external funds sent to a bank account, card, or other destination. The user first completes the anchor's interactive flow, then sends tokens to the anchor's Stellar account.
 
-### Basic Withdrawal
+### Basic withdrawal
 
 Start a withdrawal by specifying the asset you want to withdraw:
 
@@ -423,7 +423,7 @@ $transactionId = $response->id;
 // When status is "pending_user_transfer_start", send the Stellar payment
 ```
 
-### Withdrawal with Options
+### Withdrawal with options
 
 Specify additional options like amount, source account, and language:
 
@@ -449,7 +449,7 @@ $request->lang = "de"; // German
 $response = $service->withdraw($request);
 ```
 
-### Withdrawal with Refund Memo
+### Withdrawal with refund memo
 
 Specify a memo for refunds if the withdrawal fails or is cancelled:
 
@@ -473,7 +473,7 @@ $request->refundMemoType = "text"; // "text", "id", or "hash"
 $response = $service->withdraw($request);
 ```
 
-### Withdrawal with SEP-38 Quote (Asset Exchange)
+### Withdrawal with SEP-38 quote (asset exchange)
 
 For cross-asset withdrawals (e.g., send USDC, receive EUR in bank), use a SEP-38 quote:
 
@@ -498,7 +498,7 @@ $request->amount = 500.00; // Must match the quote's sell_amount
 $response = $service->withdraw($request);
 ```
 
-### Withdrawal with KYC Data
+### Withdrawal with KYC data
 
 Pre-fill KYC data to speed up the withdrawal process:
 
@@ -530,7 +530,7 @@ $request->kycFields = $kycFields;
 $response = $service->withdraw($request);
 ```
 
-### Completing a Withdrawal Payment
+### Completing a withdrawal payment
 
 After the user completes the interactive flow, poll the transaction endpoint to get payment instructions. When the status is `pending_user_transfer_start`, send the Stellar payment:
 
@@ -590,11 +590,11 @@ if ($tx->status === "pending_user_transfer_start") {
 }
 ```
 
-## Tracking Transactions
+## Tracking transactions
 
 After starting a deposit or withdrawal, poll the anchor for status updates. The SDK provides methods to query single transactions or list all transactions.
 
-### Get a Single Transaction by ID
+### Get a single transaction by ID
 
 Query a specific transaction using its anchor-generated ID:
 
@@ -635,7 +635,7 @@ if ($tx->moreInfoUrl !== null) {
 }
 ```
 
-### Get Transaction by Stellar Transaction ID
+### Get transaction by Stellar transaction ID
 
 Look up a transaction using its Stellar network transaction hash:
 
@@ -654,7 +654,7 @@ $request->stellarTransactionId = "abc123def456..."; // Stellar transaction hash
 $response = $service->transaction($request);
 ```
 
-### Get Transaction by External Transaction ID
+### Get transaction by external transaction ID
 
 Look up a transaction using an external reference (e.g., bank transfer reference):
 
@@ -673,7 +673,7 @@ $request->externalTransactionId = "BANK-REF-123456";
 $response = $service->transaction($request);
 ```
 
-### Get Transaction History
+### Get transaction history
 
 Query multiple transactions with filtering and pagination:
 
@@ -709,7 +709,7 @@ foreach ($response->transactions as $tx) {
 }
 ```
 
-### Pagination with Paging ID
+### Pagination with paging ID
 
 For paginating through large transaction lists:
 
@@ -739,11 +739,11 @@ if (count($transactions) > 0) {
 }
 ```
 
-## Transaction Object Details
+## Transaction object details
 
-The `SEP24Transaction` object contains comprehensive information about a transaction. Here are the key fields:
+The `SEP24Transaction` object contains detailed information about a transaction. Here are the key fields:
 
-### Common Fields (All Transactions)
+### Common fields (all transactions)
 
 | Field | Type | Description |
 |-------|------|-------------|
@@ -770,7 +770,7 @@ The `SEP24Transaction` object contains comprehensive information about a transac
 | `from` | string | Source address/account |
 | `to` | string | Destination address/account |
 
-### Deposit-Specific Fields
+### Deposit-specific fields
 
 | Field | Type | Description |
 |-------|------|-------------|
@@ -778,7 +778,7 @@ The `SEP24Transaction` object contains comprehensive information about a transac
 | `depositMemoType` | string | Memo type (`text`, `id`, `hash`) |
 | `claimableBalanceId` | string | Claimable balance ID if used |
 
-### Withdrawal-Specific Fields
+### Withdrawal-specific fields
 
 | Field | Type | Description |
 |-------|------|-------------|
@@ -786,7 +786,7 @@ The `SEP24Transaction` object contains comprehensive information about a transac
 | `withdrawMemo` | string | Memo to include in the payment |
 | `withdrawMemoType` | string | Memo type (`text`, `id`, `hash`) |
 
-### Reading Transaction Fields
+### Reading transaction fields
 
 ```php
 <?php
@@ -825,7 +825,7 @@ if ($tx->kind === "withdrawal" && $tx->status === "pending_user_transfer_start")
 }
 ```
 
-## Transaction Statuses
+## Transaction statuses
 
 The `status` field indicates the current state of the transaction:
 
@@ -848,7 +848,7 @@ The `status` field indicates the current state of the transaction:
 | `too_large` | Amount above maximum threshold |
 | `error` | Transaction failed due to an error |
 
-## Handling Refunds
+## Handling refunds
 
 When a transaction is refunded, the `refunds` object contains details about the refund:
 
@@ -887,7 +887,7 @@ if ($tx->status === "refunded" && $tx->refunds !== null) {
 }
 ```
 
-## Error Handling
+## Error handling
 
 The SDK provides specific exceptions for different error scenarios. Handle them appropriately in your application:
 
@@ -953,7 +953,7 @@ try {
 }
 ```
 
-## Fee Information (Deprecated)
+## Fee information (deprecated)
 
 The `/fee` endpoint is deprecated in favor of SEP-38. For anchors that still support it:
 
@@ -986,7 +986,7 @@ if ($info->feeEndpointInfo !== null && $info->feeEndpointInfo->enabled) {
 
 > **Note:** New integrations should use [SEP-38](sep-38.md) `/price` endpoint for fee and exchange rate information.
 
-## Polling Strategy
+## Polling strategy
 
 When monitoring transactions, implement a polling strategy with exponential backoff:
 
@@ -1042,7 +1042,7 @@ if ($completedTx !== null) {
 }
 ```
 
-## Related SEPs
+## Related specifications
 
 - [SEP-1](sep-01.md) - stellar.toml (where `TRANSFER_SERVER_SEP0024` is published)
 - [SEP-10](sep-10.md) - Web Authentication (required for SEP-24)

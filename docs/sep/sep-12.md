@@ -12,27 +12,27 @@ This SDK implements SEP-12 v1.15.0.
 
 ## Table of Contents
 
-- [Quick Example](#quick-example)
-- [Creating the KYC Service](#creating-the-kyc-service)
-- [Checking Customer Status](#checking-customer-status)
-- [Submitting Customer Information](#submitting-customer-information)
-  - [Personal Information](#personal-information)
-  - [Complete Natural Person Fields](#complete-natural-person-fields)
-  - [Financial Account Information](#financial-account-information)
-  - [Uploading ID Documents](#uploading-id-documents)
+- [Quick example](#quick-example)
+- [Creating the KYC service](#creating-the-kyc-service)
+- [Checking customer status](#checking-customer-status)
+- [Submitting customer information](#submitting-customer-information)
+  - [Personal information](#personal-information)
+  - [Complete natural person fields](#complete-natural-person-fields)
+  - [Financial account information](#financial-account-information)
+  - [Uploading ID documents](#uploading-id-documents)
   - [Organization KYC](#organization-kyc)
-- [Verifying Contact Information](#verifying-contact-information)
-- [File Upload Endpoint](#file-upload-endpoint)
-- [Callback Notifications](#callback-notifications)
-- [Deleting Customer Data](#deleting-customer-data)
-- [Shared/Omnibus Accounts](#sharedomnibus-accounts)
-- [Transaction-Based KYC](#transaction-based-kyc)
-- [Error Handling](#error-handling)
-- [Customer Statuses](#customer-statuses)
-- [Field Statuses](#field-statuses)
-- [Related SEPs](#related-seps)
+- [Verifying contact information](#verifying-contact-information)
+- [File upload endpoint](#file-upload-endpoint)
+- [Callback notifications](#callback-notifications)
+- [Deleting customer data](#deleting-customer-data)
+- [Shared/omnibus accounts](#sharedomnibus-accounts)
+- [Transaction-based KYC](#transaction-based-kyc)
+- [Error handling](#error-handling)
+- [Customer statuses](#customer-statuses)
+- [Field statuses](#field-statuses)
+- [Related specifications](#related-specifications)
 
-## Quick Example
+## Quick example
 
 This example shows the typical KYC workflow: create the service, check what information is needed, then submit customer data.
 
@@ -72,7 +72,7 @@ $putResponse = $kycService->putCustomerInfo($putRequest);
 $customerId = $putResponse->getId(); // Save for future requests
 ```
 
-## Creating the KYC Service
+## Creating the KYC service
 
 ### From Domain (Recommended)
 
@@ -104,7 +104,7 @@ use Soneso\StellarSDK\SEP\KYCService\KYCService;
 $kycService = new KYCService("https://api.anchor.com/kyc");
 ```
 
-## Checking Customer Status
+## Checking customer status
 
 Before submitting data, check what fields the anchor requires. The response includes the customer's current verification status and lists required fields.
 
@@ -172,9 +172,9 @@ if ($providedFields !== null) {
 }
 ```
 
-## Submitting Customer Information
+## Submitting customer information
 
-### Personal Information
+### Personal information
 
 Submit basic personal information for individual customers. The `StandardKYCFields` container holds `NaturalPersonKYCFields` for individuals or `OrganizationKYCFields` for businesses.
 
@@ -207,7 +207,7 @@ $response = $kycService->putCustomerInfo($request);
 $customerId = $response->getId(); // Save this for future requests
 ```
 
-### Complete Natural Person Fields
+### Complete natural person fields
 
 The SDK supports all SEP-9 standard fields for natural persons. Here's a comprehensive example showing all available fields.
 
@@ -277,7 +277,7 @@ $request->KYCFields = $kycFields;
 $response = $kycService->putCustomerInfo($request);
 ```
 
-### Financial Account Information
+### Financial account information
 
 For deposits and withdrawals, anchors often require banking or payment account details. Use `FinancialAccountKYCFields` for this information.
 
@@ -336,7 +336,7 @@ $request->KYCFields = $kycFields;
 $response = $kycService->putCustomerInfo($request);
 ```
 
-### Uploading ID Documents
+### Uploading ID documents
 
 Binary fields like photos and documents are uploaded directly within the request. Load files as binary strings.
 
@@ -453,7 +453,7 @@ $request->type = "sep31-sender";
 $response = $kycService->putCustomerInfo($request);
 ```
 
-### Using Custom Fields
+### Using custom fields
 
 If an anchor requires non-standard fields, use `customFields` for text data and `customFiles` for binary data.
 
@@ -483,7 +483,7 @@ $request->customFiles = [
 $response = $kycService->putCustomerInfo($request);
 ```
 
-## Verifying Contact Information
+## Verifying contact information
 
 Some anchors require verification of contact information (phone or email) via a confirmation code. When a field has `VERIFICATION_REQUIRED` status, submit the code using the `PUT /customer` endpoint with `_verification` suffix.
 
@@ -524,7 +524,7 @@ $verifyResponse = $kycService->putCustomerInfo($putRequest);
 echo "Status after verification: " . $verifyResponse->getId() . "\n";
 ```
 
-### Deprecated Verification Endpoint
+### Deprecated verification endpoint
 
 The SDK also supports the deprecated `PUT /customer/verification` endpoint for backwards compatibility. New implementations should use the method above instead.
 
@@ -549,11 +549,11 @@ $response = $kycService->putCustomerVerification($request);
 echo "Status: " . $response->getStatus() . "\n";
 ```
 
-## File Upload Endpoint
+## File upload endpoint
 
 For complex data structures that require `application/json`, upload files separately using the files endpoint, then reference them by `file_id` in customer requests.
 
-### Upload a File
+### Upload a file
 
 Upload a file and receive a `file_id` that can be referenced in subsequent `PUT /customer` requests.
 
@@ -589,7 +589,7 @@ $request->customFields = [
 $response = $kycService->putCustomerInfo($request);
 ```
 
-### Retrieve File Information
+### Retrieve file information
 
 Get information about previously uploaded files by file ID or customer ID.
 
@@ -618,7 +618,7 @@ foreach ($response->files as $file) {
 }
 ```
 
-## Callback Notifications
+## Callback notifications
 
 Register a callback URL to receive automatic notifications when customer status changes. This avoids polling the `GET /customer` endpoint.
 
@@ -650,7 +650,7 @@ if ($response->getStatusCode() === 200) {
 // in the Signature header for verification.
 ```
 
-### Verifying Callback Signatures
+### Verifying callback signatures
 
 The anchor signs callback requests using their `SIGNING_KEY`. Verify the `Signature` header to ensure authenticity.
 
@@ -682,7 +682,7 @@ $payload = "$timestamp.$host.$body";
 // (Use Stellar SDK's signature verification)
 ```
 
-## Deleting Customer Data
+## Deleting customer data
 
 Request deletion of all stored customer data. This is useful for GDPR compliance or when a customer closes their account.
 
@@ -719,7 +719,7 @@ $response = $kycService->deleteCustomer(
 );
 ```
 
-## Shared/Omnibus Accounts
+## Shared/omnibus accounts
 
 When multiple customers share a single Stellar account (common for exchanges and custodians), use memos to distinguish them. The memo should match the one used during SEP-10 authentication.
 
@@ -760,7 +760,7 @@ $putRequest->memoType = "id"; // Deprecated but supported
 $response = $kycService->putCustomerInfo($putRequest);
 ```
 
-## Transaction-Based KYC
+## Transaction-based KYC
 
 Some anchors require different KYC information based on transaction details (e.g., higher amounts require more verification). Use `transactionId` to link KYC to a specific transaction.
 
@@ -807,7 +807,7 @@ $putRequest->type = "sep6";
 $response = $kycService->putCustomerInfo($putRequest);
 ```
 
-## Error Handling
+## Error handling
 
 Handle various error conditions that may occur during KYC operations.
 
@@ -897,7 +897,7 @@ try {
 }
 ```
 
-### Handling PUT Errors
+### Handling PUT errors
 
 ```php
 <?php
@@ -942,7 +942,7 @@ try {
 }
 ```
 
-## Customer Statuses
+## Customer statuses
 
 The `status` field in `GetCustomerInfoResponse` indicates the customer's position in the KYC process:
 
@@ -953,7 +953,7 @@ The `status` field in `GetCustomerInfoResponse` indicates the customer's positio
 | `NEEDS_INFO` | Additional information required. Check `fields` array for what's needed. |
 | `REJECTED` | KYC permanently rejected. Customer cannot use the service. Check `message` for reason. |
 
-## Field Statuses
+## Field statuses
 
 The `status` field in `GetCustomerInfoProvidedField` indicates the verification state of individual fields:
 
@@ -964,7 +964,7 @@ The `status` field in `GetCustomerInfoProvidedField` indicates the verification 
 | `REJECTED` | Field was rejected. Check `error` for reason. May be resubmitted if customer status is `NEEDS_INFO`. |
 | `VERIFICATION_REQUIRED` | Field needs verification (e.g., confirmation code). Submit code with `_verification` suffix. |
 
-## Related SEPs
+## Related specifications
 
 - [SEP-10](sep-10.md) - Web Authentication (required for all KYC requests)
 - [SEP-9](https://github.com/stellar/stellar-protocol/blob/master/ecosystem/sep-0009.md) - Standard KYC Fields specification
