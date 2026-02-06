@@ -90,6 +90,8 @@ $transferServer = $info->transferServer;          // SEP-06 Deposit/Withdrawal
 $transferServerSep24 = $info->transferServerSep24; // SEP-24 Interactive
 $kycServer = $info->kYCServer;                    // SEP-12 KYC
 $webAuthEndpoint = $info->webAuthEndpoint;        // SEP-10 Web Auth
+$webAuthForContracts = $info->webAuthForContractsEndpoint; // SEP-45 Contract Auth
+$webAuthContractId = $info->webAuthContractId;    // SEP-45 Auth Contract ID
 $directPaymentServer = $info->directPaymentServer; // SEP-31 Direct Payments
 $anchorQuoteServer = $info->anchorQuoteServer;    // SEP-38 Quotes
 
@@ -235,3 +237,4 @@ if ($info->transferServerSep24 === null) {
 - [SEP-10 Authentication](sep-10.md) - Uses `WEB_AUTH_ENDPOINT` and `SIGNING_KEY`
 - [SEP-24 Interactive](sep-24.md) - Uses `TRANSFER_SERVER_SEP0024`
 - [SEP-07 URI Scheme](sep-07.md) - Uses `URI_REQUEST_SIGNING_KEY`
+- [SEP-45 Contract Auth](sep-45.md) - Uses `WEB_AUTH_FOR_CONTRACTS_ENDPOINT` and `WEB_AUTH_CONTRACT_ID`
