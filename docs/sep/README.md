@@ -66,7 +66,6 @@ The issuer's approval server reviews each transaction and either approves, rejec
 | Require memo on incoming payments | SEP-29 |
 | Account recovery via custodians | SEP-30 |
 | Message signing and verification | SEP-53 |
-| Soroban contract authentication | SEP-45 |
 
 ## Learning More
 
