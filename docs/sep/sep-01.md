@@ -201,6 +201,8 @@ if ($validators !== null) {
 
 ## Error Handling
 
+Handle network failures and check for missing service endpoints:
+
 ```php
 <?php
 
