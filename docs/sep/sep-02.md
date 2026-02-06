@@ -1,4 +1,4 @@
-# SEP-02: Federation Protocol
+# SEP-02: Federation protocol
 
 Federation allows users to send payments using human-readable addresses like `bob*example.com` instead of raw account IDs like `GCEZWKCA5VLDNRLN3RPRJMRZOX3Z6G5CHCGSNFHEYVXM3XOJMDS674JZ`. It also enables organizations to map bank accounts or other external identifiers to Stellar accounts.
 
@@ -6,7 +6,7 @@ Federation allows users to send payments using human-readable addresses like `bo
 
 See the [SEP-02 specification](https://github.com/stellar/stellar-protocol/blob/master/ecosystem/sep-0002.md) for protocol details.
 
-## Address Format
+## Address format
 
 A Stellar address has two parts: `username*domain.com`
 - **Username:** Any printable UTF-8 except `*` and `>` (emails and phone numbers are allowed)  
@@ -14,7 +14,7 @@ A Stellar address has two parts: `username*domain.com`
 
 Examples: `bob*example.com`, `alice@gmail.com*stellar.org`, `+14155550100*bank.com`
 
-## How Address Resolution Works
+## How address resolution works
 
 When you resolve a Stellar address like `bob*example.com`, this happens:
 
@@ -26,7 +26,9 @@ When you resolve a Stellar address like `bob*example.com`, this happens:
 
 The SDK handles this entire flow automatically with `Federation::resolveStellarAddress()`.
 
-## Quick Example
+## Quick example
+
+Resolve a Stellar address to get the destination account ID for a payment. This single method call handles the entire federation lookup process, including fetching the stellar.toml and querying the federation server.
 
 ```php
 <?php
@@ -40,9 +42,9 @@ echo "Account: " . $response->getAccountId() . PHP_EOL;
 echo "Memo: " . $response->getMemo() . PHP_EOL;
 ```
 
-## Resolving Stellar Addresses
+## Resolving Stellar addresses
 
-Convert a Stellar address to an account ID and optional memo:
+Convert a Stellar address to an account ID and optional memo. The memo is important because some services (like exchanges) use a single Stellar account for all users and require a memo to identify the recipient.
 
 ```php
 <?php
@@ -72,9 +74,9 @@ echo "Address: " . $address . PHP_EOL;
 
 **Important:** Don't cache federation responses. Some services use random account IDs for privacy, which may change over time.
 
-## Reverse Lookup (Account ID to Address)
+## Reverse lookup (account ID to address)
 
-Find the Stellar address associated with an account ID. You need to know which federation server to query.
+Find the Stellar address associated with an account ID. Unlike forward lookups, reverse lookups require you to know which federation server to query since the account ID doesn't contain domain information.
 
 ```php
 <?php
@@ -90,9 +92,9 @@ echo "Address: " . $response->getStellarAddress() . PHP_EOL;
 // bob*soneso.com
 ```
 
-## Transaction Lookup
+## Transaction lookup
 
-Some federation servers can return information about who sent a transaction.
+Query a federation server to get information about who sent a transaction. This is useful for identifying the sender of an incoming payment when the federation server supports transaction lookups.
 
 ```php
 <?php
@@ -110,7 +112,7 @@ if ($response->getStellarAddress() !== null) {
 }
 ```
 
-## Forward Federation
+## Forward federation
 
 Forward federation maps external identifiers (bank accounts, routing numbers, etc.) to Stellar accounts. Use this to pay someone who doesn't have a Stellar address but has another type of account that an anchor supports.
 
@@ -137,9 +139,9 @@ if ($response->getMemo() !== null) {
 }
 ```
 
-## Building a Payment with Federation
+## Building a payment with federation
 
-Here's how to send a payment using a Stellar address:
+This complete example shows how to send a payment using a Stellar address. It resolves the recipient's address, builds a transaction with the appropriate memo, and submits it to the network.
 
 ```php
 <?php
@@ -201,9 +203,9 @@ try {
 }
 ```
 
-## Error Handling
+## Error handling
 
-Handle invalid addresses, missing federation servers, and unknown users:
+Federation lookups can fail for various reasons. This example demonstrates how to handle the most common error scenarios: invalid address format, missing federation server configuration, and unknown users.
 
 ```php
 <?php
@@ -214,20 +216,24 @@ use Soneso\StellarSDK\Exceptions\HorizonRequestException;
 use Soneso\StellarSDK\SEP\Federation\Federation;
 
 // Invalid address format (missing *)
+// Throws InvalidArgumentException immediately without making network requests
 try {
     Federation::resolveStellarAddress('invalid-no-asterisk');
 } catch (InvalidArgumentException $e) {
     echo "Invalid format: " . $e->getMessage() . PHP_EOL;
+    // Output: Invalid format: Invalid federation address: invalid-no-asterisk
 }
 
-// Domain without federation server in stellar.toml
+// Domain without federation server configured in stellar.toml
+// Throws Exception when stellar.toml doesn't contain FEDERATION_SERVER
 try {
     Federation::resolveStellarAddress('user*domain-without-federation.com');
 } catch (Exception $e) {
     echo "No federation server: " . $e->getMessage() . PHP_EOL;
 }
 
-// User not found (federation server returns 404)
+// User not found or federation server error
+// Throws HorizonRequestException for HTTP errors (404, 500, etc.)
 try {
     $response = Federation::resolveStellarAddress('nonexistent*soneso.com');
     if ($response->getAccountId() === null) {
@@ -238,9 +244,42 @@ try {
 }
 ```
 
-## Finding the Federation Server
+### Exception summary
 
-Each domain publishes its federation server URL in stellar.toml. This is step 2-3 of the address resolution flow:
+| Exception | When Thrown |
+|-----------|-------------|
+| `InvalidArgumentException` | Address doesn't contain `*` character |
+| `Exception` | Domain's stellar.toml doesn't have `FEDERATION_SERVER` |
+| `HorizonRequestException` | Federation server returns HTTP error (404, 500, etc.) |
+
+## Custom HTTP client
+
+All Federation methods accept an optional Guzzle HTTP client parameter. This is useful for configuring timeouts, proxies, custom headers, or mocking responses in tests.
+
+```php
+<?php
+
+use GuzzleHttp\Client;
+use Soneso\StellarSDK\SEP\Federation\Federation;
+
+// Create a custom HTTP client with specific settings
+$httpClient = new Client([
+    'timeout' => 5.0,           // 5 second timeout
+    'connect_timeout' => 2.0,   // 2 second connection timeout
+    'headers' => [
+        'User-Agent' => 'MyWallet/1.0'
+    ]
+]);
+
+// Pass the custom client to any Federation method
+$response = Federation::resolveStellarAddress('bob*soneso.com', $httpClient);
+
+echo "Account: " . $response->getAccountId() . PHP_EOL;
+```
+
+## Finding the federation server
+
+Each domain publishes its federation server URL in stellar.toml. The `resolveStellarAddress()` method does this lookup automatically, but you can also fetch it directly when needed for reverse lookups or manual queries.
 
 ```php
 <?php
@@ -257,9 +296,9 @@ echo "Federation Server: " . $federationServer . PHP_EOL;
 
 **Note:** `Federation::resolveStellarAddress()` does this lookup automatically. You only need this for reverse lookups or when using `FederationRequestBuilder` directly.
 
-## Using FederationRequestBuilder Directly
+## Using FederationRequestBuilder directly
 
-Use `FederationRequestBuilder` when you need custom HTTP clients, want to build URLs manually, or are working with non-standard federation parameters:
+Use `FederationRequestBuilder` when you need fine-grained control over federation queries: custom HTTP clients, URL inspection for debugging, or non-standard federation parameters.
 
 ```php
 <?php
@@ -270,23 +309,62 @@ use Soneso\StellarSDK\SEP\Federation\FederationRequestBuilder;
 $httpClient = new Client();
 $federationServer = 'https://stellarid.io/federation';
 
-// Resolve by name
-$response = (new FederationRequestBuilder($httpClient, $federationServer))
+// Resolve by name (type=name)
+$requestBuilder = (new FederationRequestBuilder($httpClient, $federationServer))
     ->forType('name')
-    ->forStringToLookUp('bob*soneso.com')
-    ->execute();
+    ->forStringToLookUp('bob*soneso.com');
 
+// Inspect the URL before executing (useful for debugging)
+echo "Request URL: " . $requestBuilder->buildUrl() . PHP_EOL;
+// https://stellarid.io/federation?type=name&q=bob*soneso.com
+
+$response = $requestBuilder->execute();
 echo "Account: " . $response->getAccountId() . PHP_EOL;
+```
 
-// Resolve by account ID
+### Query types
+
+The `forType()` method accepts these values:
+
+| Type | Description | Use With |
+|------|-------------|----------|
+| `name` | Stellar address lookup | `forStringToLookUp('user*domain.com')` |
+| `id` | Reverse lookup by account ID | `forStringToLookUp('G...')` |
+| `txid` | Transaction sender lookup | `forStringToLookUp('txhash...')` |
+| `forward` | Forward to external identifier | `forQueryParameters([...])` |
+
+### More examples
+
+Reverse lookup by account ID to find the associated Stellar address:
+
+```php
+<?php
+
+use GuzzleHttp\Client;
+use Soneso\StellarSDK\SEP\Federation\FederationRequestBuilder;
+
+$httpClient = new Client();
+$federationServer = 'https://stellarid.io/federation';
+
 $response = (new FederationRequestBuilder($httpClient, $federationServer))
     ->forType('id')
     ->forStringToLookUp('GBVPKXWMAB3FIUJB6T7LF66DABKKA2ZHRHDOQZ25GBAEFZVHTBPJNOJI')
     ->execute();
 
 echo "Address: " . $response->getStellarAddress() . PHP_EOL;
+```
 
-// Forward lookup with custom parameters
+Forward lookup with custom parameters for routing payments to external financial systems:
+
+```php
+<?php
+
+use GuzzleHttp\Client;
+use Soneso\StellarSDK\SEP\Federation\FederationRequestBuilder;
+
+$httpClient = new Client();
+$federationServer = 'https://stellarid.io/federation';
+
 $response = (new FederationRequestBuilder($httpClient, $federationServer))
     ->forType('forward')
     ->forQueryParameters([
@@ -298,6 +376,19 @@ $response = (new FederationRequestBuilder($httpClient, $federationServer))
 
 echo "Deposit to: " . $response->getAccountId() . PHP_EOL;
 ```
+
+## FederationResponse properties
+
+The `FederationResponse` object contains all the information returned by the federation server:
+
+| Method | Returns | Description |
+|--------|---------|-------------|
+| `getAccountId()` | `?string` | Stellar account ID (G-address) for payments |
+| `getStellarAddress()` | `?string` | Stellar address in `user*domain.com` format |
+| `getMemo()` | `?string` | Memo value to include with payment |
+| `getMemoType()` | `?string` | Memo type: `text`, `id`, or `hash` |
+
+**Note on hash memos:** When `getMemoType()` returns `hash`, the memo value from `getMemo()` is base64-encoded. Decode it before creating a `Memo::hash()`.
 
 ## Related SEPs
 

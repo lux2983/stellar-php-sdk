@@ -1,12 +1,12 @@
-# SEP-05: Key Derivation for Stellar
+# SEP-05: Key derivation for Stellar
 
-SEP-05 defines how to generate Stellar keypairs from mnemonic phrases (seed words) using hierarchical deterministic (HD) key derivation. This allows users to back up their wallet with a simple word list and derive multiple accounts from a single seed.
+SEP-05 defines how to generate Stellar keypairs from mnemonic phrases using hierarchical deterministic (HD) key derivation. Users can backup their entire wallet with a simple word list and derive multiple accounts from a single seed using the path `m/44'/148'/index'`.
 
 **When to use:** Building wallets that support mnemonic backup phrases, recovering accounts from seed words, or generating multiple related accounts from a single master seed.
 
 See the [SEP-05 specification](https://github.com/stellar/stellar-protocol/blob/master/ecosystem/sep-0005.md) for protocol details.
 
-## Quick Example
+## Quick example
 
 ```php
 <?php
@@ -23,11 +23,13 @@ $keyPair = KeyPair::fromMnemonic($mnemonic, 0);
 echo "Account: " . $keyPair->getAccountId() . PHP_EOL;
 ```
 
-## Generating Mnemonics
+## Generating mnemonics
 
-### 12-Word Mnemonic
+The SDK supports generating mnemonics with 12, 15, 18, 21, or 24 words using cryptographically secure entropy.
 
-Standard security for most use cases:
+### 12-word mnemonic
+
+Standard security for most use cases (128 bits entropy):
 
 ```php
 <?php
@@ -39,9 +41,9 @@ echo implode(' ', $mnemonic->words) . PHP_EOL;
 // bind struggle sausage repair machine fee setup finish transfer stamp benefit economy
 ```
 
-### 24-Word Mnemonic
+### 24-word mnemonic
 
-Higher security for larger holdings:
+Higher security for larger holdings (256 bits entropy, recommended for production):
 
 ```php
 <?php
@@ -54,7 +56,7 @@ echo implode(' ', $mnemonic->words) . PHP_EOL;
 // island tortoise suspect resemble harbor twelve romance away rug current robust practice
 ```
 
-### 15-Word Mnemonic
+### 15-word mnemonic
 
 ```php
 <?php
@@ -65,7 +67,24 @@ $mnemonic = Mnemonic::generate15WordsMnemonic();
 echo implode(' ', $mnemonic->words) . PHP_EOL;
 ```
 
-## Mnemonics in Other Languages
+### Custom entropy
+
+Generate mnemonics from your own entropy (must be 128, 160, 192, 224, or 256 bits):
+
+```php
+<?php
+
+use Soneso\StellarSDK\SEP\Derivation\BIP39;
+
+// Using 256 bits of entropy (64 hex characters)
+$entropy = '15c5e7a9a97b1aa6db8e5c83a21a1e4e6ed7c0b4b73b7c2e2b7d4a7e0f0e7e7e1c8d0b5a2e3c9b6e4f7d8a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9b0c1d2e3f4';
+$mnemonic = BIP39::Entropy($entropy);
+
+echo "Words: " . implode(' ', $mnemonic->words) . PHP_EOL;
+echo "Entropy: " . $mnemonic->entropy . PHP_EOL;
+```
+
+## Mnemonics in other languages
 
 The SDK supports BIP-39 word lists in multiple languages:
 
@@ -100,11 +119,11 @@ echo implode(' ', $spanish->words) . PHP_EOL;
 - `WordList::LANGUAGE_CHINESE_TRADITIONAL`
 - `WordList::LANGUAGE_MALAY`
 
-## Deriving Keypairs from Mnemonics
+## Deriving keypairs from mnemonics
 
-### Basic Derivation
+All derivation follows the SEP-05 path `m/44'/148'/index'` where 44 is the BIP-44 purpose, 148 is Stellar's registered coin type, and index is the account number.
 
-The derivation path is `m/44'/148'/index'` where 148 is Stellar's coin type:
+### Basic derivation
 
 ```php
 <?php
@@ -129,7 +148,7 @@ echo "Account 1: " . $keyPair1->getAccountId() . PHP_EOL;
 // GBPHPX7SZKYEDV5CVOA5JOJE2RHJJDCJMRWMV4KBOIE5VSDJ6VAESR2W
 ```
 
-### Derivation with Passphrase
+### Derivation with passphrase
 
 An optional passphrase adds extra security. Different passphrases produce completely different accounts:
 
@@ -153,7 +172,7 @@ echo "Account: " . $keyPair1->getAccountId() . PHP_EOL;
 // GDY47CJARRHHL66JH3RJURDYXAMIQ5DMXZLP3TDAUJ6IN2GUOFX4OJOC
 ```
 
-### Derivation from Non-English Mnemonic
+### Derivation from non-English mnemonic
 
 ```php
 <?php
@@ -170,11 +189,45 @@ echo "Account: " . $keyPair->getAccountId() . PHP_EOL;
 // GBEAH7ADD5NRYA5YGXDMSWB7PK7J44DYG5I7SVL2FYHCPH5ZH4EJC3YP
 ```
 
-## Working with BIP-39 Seeds
+### Advanced: direct HDNode usage
 
-### Getting the Seed Hex
+For advanced users who need lower-level access to the hierarchical derivation:
 
-If you need the raw BIP-39 seed (for example, for use with other tools):
+```php
+<?php
+
+use Soneso\StellarSDK\SEP\Derivation\Mnemonic;
+use Soneso\StellarSDK\SEP\Derivation\HDNode;
+use Soneso\StellarSDK\Crypto\KeyPair;
+
+$mnemonic = Mnemonic::generate24WordsMnemonic();
+$seedBytes = $mnemonic->generateSeed("", 64);
+
+// Create master node from seed
+$masterNode = HDNode::newMasterNode($seedBytes);
+
+// Derive to m/44'/148' (the Stellar parent key)
+$stellarNode = $masterNode->derivePath("m/44'/148'");
+
+// Get raw private key bytes (32 bytes)
+$parentPrivateKey = $stellarNode->getPrivateKeyBytes();
+echo "Parent key: " . bin2hex($parentPrivateKey) . PHP_EOL;
+
+// Derive individual accounts
+$account0Node = $stellarNode->derive(0);
+$keyPair0 = KeyPair::fromPrivateKey($account0Node->getPrivateKeyBytes());
+
+$account1Node = $stellarNode->derive(1);
+$keyPair1 = KeyPair::fromPrivateKey($account1Node->getPrivateKeyBytes());
+```
+
+## Working with BIP-39 seeds
+
+The 512-bit seed is derived from the mnemonic using PBKDF2 with 2048 iterations. Use these methods when interoperating with other wallets or tools.
+
+### Getting the seed hex
+
+Extract the 512-bit BIP-39 seed as a hex string:
 
 ```php
 <?php
@@ -184,16 +237,16 @@ use Soneso\StellarSDK\SEP\Derivation\WordList;
 
 $mnemonic = Mnemonic::generate24WordsMnemonic(WordList::LANGUAGE_ITALIAN);
 
-// BIP-39 seed (128 hex characters)
+// BIP-39 seed (128 hex characters = 512 bits)
 $seedHex = $mnemonic->bip39SeedHex();
 echo "Seed: " . $seedHex . PHP_EOL;
 
-// With passphrase
+// With passphrase (creates completely different seed)
 $seedWithPassphrase = $mnemonic->bip39SeedHex('p4ssphr4se');
 echo "Seed (with passphrase): " . $seedWithPassphrase . PHP_EOL;
 ```
 
-### Getting the m/44'/148' Key
+### Getting the m/44'/148' key
 
 The Stellar derivation path key:
 
@@ -212,9 +265,9 @@ $keyWithPassphrase = $mnemonic->m44148keyHex('p4ssphr4se');
 echo "Key (with passphrase): " . $keyWithPassphrase . PHP_EOL;
 ```
 
-### Deriving from Seed Hex Directly
+### Deriving from seed hex directly
 
-If you already have the BIP-39 seed as hex:
+Use this when you have a BIP-39 seed from another source (like a hardware wallet):
 
 ```php
 <?php
@@ -232,7 +285,7 @@ echo "Account: " . $keyPair1->getAccountId() . PHP_EOL;
 // GBAW5XGWORWVFE2XTJYDTLDHXTY2Q2MO73HYCGB3XMFMQ562Q2W2GJQX
 ```
 
-## Restoring from Words
+## Restoring from words
 
 Convert a space-separated word string back to a Mnemonic object:
 
@@ -256,7 +309,9 @@ try {
 }
 ```
 
-## Error Handling
+## Error handling
+
+The SDK validates mnemonics and entropy according to BIP-39 standards:
 
 ```php
 <?php
@@ -264,12 +319,14 @@ try {
 use Exception;
 use Soneso\StellarSDK\SEP\Derivation\Mnemonic;
 use Soneso\StellarSDK\SEP\Derivation\WordList;
+use Soneso\StellarSDK\SEP\Derivation\BIP39;
 
 // Invalid word in mnemonic
 try {
     $mnemonic = Mnemonic::mnemonicFromWords('invalid words that are not in the wordlist');
 } catch (Exception $e) {
     echo "Invalid words: " . $e->getMessage() . PHP_EOL;
+    // Output: Invalid/unknown word at position X
 }
 
 // Wrong word count
@@ -290,6 +347,23 @@ try {
     echo "Checksum failed: " . $e->getMessage() . PHP_EOL;
 }
 
+// Invalid entropy length
+try {
+    $badEntropy = 'deadbeef'; // Only 32 bits, need 128+ bits
+    $mnemonic = BIP39::Entropy($badEntropy);
+} catch (Exception $e) {
+    echo "Entropy error: " . $e->getMessage() . PHP_EOL;
+    // Output: Invalid entropy length
+}
+
+// Invalid word count  
+try {
+    $mnemonic = Mnemonic::generate(11); // Not divisible by 3
+} catch (Exception $e) {
+    echo "Word count error: " . $e->getMessage() . PHP_EOL;
+    // Output: Words count must be generated in multiples of 3
+}
+
 // Unsupported language
 try {
     $mnemonic = Mnemonic::generate12WordsMnemonic('klingon');
@@ -298,13 +372,41 @@ try {
 }
 ```
 
-## Security Notes
+## Entropy and security requirements
+
+### Entropy standards
+
+The SDK enforces BIP-39 entropy requirements:
+- **Minimum**: 128 bits (12 words) - acceptable for most use cases
+- **Recommended**: 256 bits (24 words) - recommended for production
+- **Supported**: 128, 160, 192, 224, 256 bits (12, 15, 18, 21, 24 words)
+- **Source**: Cryptographically secure random_bytes() function
+
+### Checksum validation
+
+Each mnemonic includes a checksum to detect errors:
+- **12 words**: 4-bit checksum (1 in 16 chance random words pass)
+- **24 words**: 8-bit checksum (1 in 256 chance random words pass)
+- **Validation**: Automatic by default, can be disabled for debugging
+
+## Security notes
 
 - **Never share your mnemonic** - Anyone with your words can access all derived accounts
 - **Store mnemonics offline** - Write them on paper, use a hardware wallet, or use encrypted storage
 - **Use passphrases for extra security** - A passphrase creates a completely different set of accounts
 - **Verify checksums** - The SDK validates mnemonics by default to catch typos
 - **Test recovery** - Before using an account for real funds, verify you can recover it from the mnemonic
+- **Hardware security** - Consider using hardware wallets for high-value accounts
+
+## Technical implementation
+
+The PHP SDK implements SEP-05 using these standards:
+- **BIP-39**: Mnemonic phrase generation and validation
+- **SLIP-0010**: Ed25519 hierarchical deterministic key derivation  
+- **PBKDF2**: Seed generation from mnemonic (2048 iterations, SHA-512)
+- **Derivation path**: `m/44'/148'/index'` (44=BIP44, 148=Stellar, index=account)
+
+The implementation uses cryptographically secure entropy sources and follows all security best practices for key material handling.
 
 ## Related SEPs
 

@@ -1,4 +1,4 @@
-# SEP-01: Stellar Info File (stellar.toml)
+# SEP-01: Stellar info file (stellar.toml)
 
 The stellar.toml file is a standardized configuration file that anchors and organizations host at their domains. It tells wallets and other services how to interact with their accounts, assets, and services. The SDK fetches and parses these files so your application can discover anchor endpoints.
 
@@ -6,7 +6,7 @@ The stellar.toml file is a standardized configuration file that anchors and orga
 
 See the [SEP-01 specification](https://github.com/stellar/stellar-protocol/blob/master/ecosystem/sep-0001.md) for protocol details.
 
-## Quick Example
+## Quick example
 
 This example demonstrates loading a stellar.toml file from a domain and accessing service endpoints:
 
@@ -26,7 +26,7 @@ echo "Web Auth: " . $info->webAuthEndpoint . PHP_EOL;
 
 ## Loading stellar.toml
 
-### From a Domain
+### From a domain
 
 The SDK automatically constructs the URL `https://DOMAIN/.well-known/stellar.toml` and fetches the file:
 
@@ -45,7 +45,7 @@ if ($docs !== null) {
 }
 ```
 
-### From a String
+### From a string
 
 If you already have the TOML content (e.g., from a cached copy or test fixture), you can parse it directly:
 
@@ -72,9 +72,9 @@ $info = $stellarToml->getGeneralInformation();
 echo "Version: " . $info->version . PHP_EOL;
 ```
 
-## Accessing Data
+## Accessing data
 
-### General Information
+### General information
 
 The general information section contains service endpoints for SEP protocols and account information:
 
@@ -117,7 +117,7 @@ $horizonUrl = $info->horizonUrl;
 $accounts = $info->accounts; // Array of G... account IDs controlled by this domain
 ```
 
-### Organization Documentation
+### Organization documentation
 
 The documentation section contains contact and compliance information about the organization:
 
@@ -161,7 +161,7 @@ if ($docs !== null) {
 }
 ```
 
-### Principals (Points of Contact)
+### Principals (points of contact)
 
 The principals section contains identifying information for the organization's primary contact persons:
 
@@ -194,7 +194,7 @@ if ($principals !== null) {
 }
 ```
 
-### Currencies (Assets)
+### Currencies (assets)
 
 The currencies section provides information about assets issued by the organization, including both classic Stellar assets and Soroban token contracts:
 
@@ -248,7 +248,7 @@ if ($currencies !== null) {
 }
 ```
 
-### Linked Currencies
+### Linked currencies
 
 Some stellar.toml files link to separate TOML files for detailed currency information. Use `currencyFromUrl()` to fetch the full currency data:
 
@@ -305,7 +305,7 @@ if ($validators !== null) {
 }
 ```
 
-## Error Handling
+## Error handling
 
 The SDK throws exceptions when the stellar.toml file cannot be fetched or parsed. Always wrap network calls in try-catch blocks:
 
@@ -362,7 +362,7 @@ if ($docs === null) {
 }
 ```
 
-## Custom HTTP Client
+## Custom HTTP client
 
 You can provide a custom Guzzle HTTP client for testing or to configure timeouts, proxies, and other HTTP options:
 
