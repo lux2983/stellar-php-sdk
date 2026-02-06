@@ -80,6 +80,7 @@ After setup, transactions need signatures from multiple parties:
 ```php
 <?php
 
+use Soneso\StellarSDK\Asset;
 use Soneso\StellarSDK\Crypto\KeyPair;
 use Soneso\StellarSDK\Network;
 use Soneso\StellarSDK\PaymentOperationBuilder;
@@ -97,7 +98,7 @@ $account = $sdk->requestAccount($mainKeyPair->getAccountId());
 // Build a payment transaction
 $payment = (new PaymentOperationBuilder(
     'GDESTINATION...',
-    \Soneso\StellarSDK\Asset::native(),
+    Asset::native(),
     '100'
 ))->build();
 
@@ -126,6 +127,7 @@ Authorize a specific transaction in advance. The pre-auth signer is consumed whe
 <?php
 
 use Soneso\StellarSDK\Crypto\KeyPair;
+use Soneso\StellarSDK\Asset;
 use Soneso\StellarSDK\Network;
 use Soneso\StellarSDK\PaymentOperationBuilder;
 use Soneso\StellarSDK\SetOptionsOperationBuilder;
@@ -139,7 +141,7 @@ $sourceAccount = $sdk->requestAccount($sourceKeyPair->getAccountId());
 
 // Build transaction to pre-authorize (with NEXT sequence number)
 $sourceAccount->incrementSequenceNumber();
-$preAuthPayment = (new PaymentOperationBuilder('GDEST...', \Soneso\StellarSDK\Asset::native(), '50'))->build();
+$preAuthPayment = (new PaymentOperationBuilder('GDEST...', Asset::native(), '50'))->build();
 $preAuthTx = (new TransactionBuilder($sourceAccount))->addOperation($preAuthPayment)->build();
 
 // Add transaction hash as signer
@@ -487,8 +489,9 @@ Parse any transaction from XDR to examine its structure:
 <?php
 
 use Soneso\StellarSDK\AbstractTransaction;
-use Soneso\StellarSDK\Transaction;
 use Soneso\StellarSDK\FeeBumpTransaction;
+use Soneso\StellarSDK\Network;
+use Soneso\StellarSDK\Transaction;
 
 $xdrBase64 = 'AAAA...'; // Transaction envelope XDR
 $tx = AbstractTransaction::fromEnvelopeBase64XdrString($xdrBase64);
@@ -515,7 +518,7 @@ if ($tx instanceof Transaction) {
 
 if ($tx instanceof FeeBumpTransaction) {
     echo "Fee bump from: " . $tx->getFeeAccount()->getAccountId() . "\n";
-    echo "Inner tx hash: " . bin2hex($tx->getInnerTx()->hash(\Soneso\StellarSDK\Network::testnet())) . "\n";
+    echo "Inner tx hash: " . bin2hex($tx->getInnerTx()->hash(Network::testnet())) . "\n";
 }
 ```
 
@@ -611,6 +614,7 @@ Cache sequence numbers to avoid repeated Horizon calls when building multiple tr
 
 use Soneso\StellarSDK\Account;
 use Soneso\StellarSDK\StellarSDK;
+use Soneso\StellarSDK\TransactionBuilder;
 
 $sdk = StellarSDK::getTestNetInstance();
 
@@ -619,10 +623,10 @@ $response = $sdk->requestAccount('GSOURCE...');
 $account = new Account($response->getAccountId(), $response->getSequenceNumber());
 
 // Build first transaction (sequence increments automatically)
-$tx1 = (new \Soneso\StellarSDK\TransactionBuilder($account))->addOperation($op1)->build();
+$tx1 = (new TransactionBuilder($account))->addOperation($op1)->build();
 
 // Build second transaction (uses incremented sequence)
-$tx2 = (new \Soneso\StellarSDK\TransactionBuilder($account))->addOperation($op2)->build();
+$tx2 = (new TransactionBuilder($account))->addOperation($op2)->build();
 
 // After submission, refresh if needed
 $response = $sdk->requestAccount('GSOURCE...');
@@ -853,6 +857,8 @@ use PHPUnit\Framework\TestCase;
 use Soneso\StellarSDK\Account;
 use Soneso\StellarSDK\Crypto\KeyPair;
 use Soneso\StellarSDK\Network;
+use Soneso\StellarSDK\Asset;
+use Soneso\StellarSDK\PaymentOperation;
 use Soneso\StellarSDK\PaymentOperationBuilder;
 use Soneso\StellarSDK\TransactionBuilder;
 
@@ -874,7 +880,7 @@ class TransactionBuilderTest extends TestCase
     {
         $payment = (new PaymentOperationBuilder(
             'GDESTINATION123...',
-            \Soneso\StellarSDK\Asset::native(),
+            Asset::native(),
             '100.50'
         ))->build();
         
@@ -885,7 +891,7 @@ class TransactionBuilderTest extends TestCase
         $this->assertEquals(1, count($transaction->getOperations()));
         $this->assertEquals(100, $transaction->getFee());
         $this->assertInstanceOf(
-            \Soneso\StellarSDK\PaymentOperation::class,
+            PaymentOperation::class,
             $transaction->getOperations()[0]
         );
     }
@@ -897,7 +903,7 @@ class TransactionBuilderTest extends TestCase
         
         $payment = (new PaymentOperationBuilder(
             'GDEST...',
-            \Soneso\StellarSDK\Asset::native(),
+            Asset::native(),
             '50'
         ))->build();
         
@@ -922,9 +928,11 @@ Test against real network with proper setup and cleanup:
 <?php
 
 use PHPUnit\Framework\TestCase;
+use Soneso\StellarSDK\AccountMergeOperationBuilder;
 use Soneso\StellarSDK\Crypto\KeyPair;
 use Soneso\StellarSDK\Network;
 use Soneso\StellarSDK\StellarSDK;
+use Soneso\StellarSDK\TransactionBuilder;
 use Soneso\StellarSDK\Util\FriendBot;
 
 class StellarIntegrationTest extends TestCase
@@ -949,11 +957,11 @@ class StellarIntegrationTest extends TestCase
         // Merge account back to recover XLM (cleanup)
         try {
             $account = $this->sdk->requestAccount($this->testKeyPair->getAccountId());
-            $mergeOp = (new \Soneso\StellarSDK\AccountMergeOperationBuilder(
+            $mergeOp = (new AccountMergeOperationBuilder(
                 'GAIH3ULLFQ4DGSECF2AR555KZ4KNDGEKN4AFI4SU2M7B43MGK3QJZNSR' // Friendbot
             ))->build();
             
-            $tx = (new \Soneso\StellarSDK\TransactionBuilder($account))
+            $tx = (new TransactionBuilder($account))
                 ->addOperation($mergeOp)
                 ->build();
                 
@@ -984,6 +992,7 @@ Mock Horizon responses to test error handling:
 
 use PHPUnit\Framework\TestCase;
 use Soneso\StellarSDK\Exceptions\HorizonRequestException;
+use Soneso\StellarSDK\Responses\Account\AccountResponse;
 use Soneso\StellarSDK\StellarSDK;
 
 class MockedHorizonTest extends TestCase
@@ -1027,7 +1036,7 @@ class MockedHorizonTest extends TestCase
     
     private function createMockAccount()
     {
-        $mock = $this->createMock(\Soneso\StellarSDK\Responses\Account\AccountResponse::class);
+        $mock = $this->createMock(AccountResponse::class);
         $mock->method('getAccountId')->willReturn('GVALIDACCOUNT');
         return $mock;
     }
@@ -1042,7 +1051,7 @@ class AccountService
         $this->sdk = $sdk;
     }
     
-    public function safeGetAccount(string $accountId): ?\Soneso\StellarSDK\Responses\Account\AccountResponse
+    public function safeGetAccount(string $accountId): ?AccountResponse
     {
         try {
             return $this->sdk->requestAccount($accountId);
@@ -1054,7 +1063,7 @@ class AccountService
         }
     }
     
-    public function getAccountWithRetry(string $accountId, int $maxRetries = 3): ?\Soneso\StellarSDK\Responses\Account\AccountResponse
+    public function getAccountWithRetry(string $accountId, int $maxRetries = 3): ?AccountResponse
     {
         for ($i = 0; $i < $maxRetries; $i++) {
             try {
