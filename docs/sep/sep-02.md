@@ -123,6 +123,7 @@ Here's how to send a payment using a Stellar address:
 <?php
 
 use Exception;
+use Soneso\StellarSDK\Asset;
 use Soneso\StellarSDK\Crypto\KeyPair;
 use Soneso\StellarSDK\Memo;
 use Soneso\StellarSDK\Network;
@@ -179,6 +180,8 @@ try {
 
 ## Error Handling
 
+Handle invalid addresses, missing federation servers, and unknown users:
+
 ```php
 <?php
 
@@ -214,7 +217,7 @@ try {
 
 ## Finding the Federation Server
 
-If you need to query a federation server directly without using Stellar addresses:
+Get the federation server URL from a domain's stellar.toml:
 
 ```php
 <?php
