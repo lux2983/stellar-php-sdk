@@ -125,9 +125,9 @@ For wallet backup and recovery. The SDK supports 12, 15, 18, 21, or 24 word phra
 use Soneso\StellarSDK\Crypto\KeyPair;
 use Soneso\StellarSDK\SEP\Derivation\Mnemonic;
 
-// Generate mnemonic (12, 15, or 24 words)
-$mnemonic = Mnemonic::generate12WordsMnemonic();
-$mnemonic = Mnemonic::generate24WordsMnemonic();
+// Generate mnemonic — choose your preferred length:
+$mnemonic = Mnemonic::generate12WordsMnemonic();  // 12 words
+// or: $mnemonic = Mnemonic::generate24WordsMnemonic();  // 24 words (more secure)
 
 $words = implode(" ", $mnemonic->words);
 // Store these words securely — they control all derived accounts
@@ -201,6 +201,7 @@ use Soneso\StellarSDK\StellarSDK;
 use Soneso\StellarSDK\Asset;
 
 $sdk = StellarSDK::getTestNetInstance();
+$accountId = "GCQHNQR2VM5OPXSTWZSF7ISDLE5XZRF73LNU6EOZXFQG2IJFU4WB7VFY";
 
 // Check if account exists
 if (!$sdk->accountExists($accountId)) {
@@ -231,11 +232,16 @@ foreach ($account->getSigners() as $signer) {
 
 ### Builder Pattern
 
+Transactions are built using a fluent builder pattern:
+
 ```php
 <?php
 
 use Soneso\StellarSDK\TransactionBuilder;
 use Soneso\StellarSDK\Memo;
+
+// $sourceAccount loaded via $sdk->requestAccount(...)
+// $operation1, $operation2 built via operation builders (see below)
 
 $transaction = (new TransactionBuilder($sourceAccount))
     ->addOperation($operation1)
@@ -281,14 +287,15 @@ $transaction = (new TransactionBuilder($sourceAccount))
 
 use Soneso\StellarSDK\Network;
 
-// Sign (use correct network!)
-$transaction->sign($keyPair, Network::testnet());
+// After building a transaction, sign it with the source account's keypair
+// Use the correct network — testnet and public have different passphrases!
+$transaction->sign($sourceKeyPair, Network::testnet());
 
-// Multi-sig: add multiple signatures
-$transaction->sign($keyPairA, Network::testnet());
-$transaction->sign($keyPairB, Network::testnet());
+// Multi-sig accounts: add signatures from all required signers
+// $transaction->sign($keyPairA, Network::testnet());
+// $transaction->sign($keyPairB, Network::testnet());
 
-// Submit
+// Submit to the network
 $response = $sdk->submitTransaction($transaction);
 
 if ($response->isSuccessful()) {
