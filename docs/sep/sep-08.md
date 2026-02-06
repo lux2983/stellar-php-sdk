@@ -11,8 +11,6 @@ SEP-08 handles assets that require issuer approval for every transaction. These 
 
 ## Quick Example
 
-This example demonstrates the complete flow: creating a service from a domain, discovering regulated assets, and submitting a transaction for approval.
-
 ```php
 <?php
 
@@ -20,7 +18,7 @@ use Soneso\StellarSDK\SEP\RegulatedAssets\RegulatedAssetsService;
 use Soneso\StellarSDK\SEP\RegulatedAssets\SEP08PostTransactionSuccess;
 use Soneso\StellarSDK\SEP\RegulatedAssets\SEP08PostTransactionRejected;
 
-// Create service from anchor domain - this loads stellar.toml and extracts regulated assets
+// Create service from anchor domain
 $service = RegulatedAssetsService::fromDomain("regulated-asset-issuer.com");
 
 // Get regulated assets defined in stellar.toml
@@ -34,7 +32,6 @@ $response = $service->postTransaction(
     approvalServer: $regulatedAssets[0]->approvalServer
 );
 
-// Handle the response based on its type
 if ($response instanceof SEP08PostTransactionSuccess) {
     echo "Approved! Submit this transaction: " . $response->tx . PHP_EOL;
 } elseif ($response instanceof SEP08PostTransactionRejected) {
@@ -56,24 +53,18 @@ The approval server controls who can transact and may require additional KYC inf
 
 ### Creating the Service
 
-The `RegulatedAssetsService` provides two ways to initialize: from a domain name (recommended) or from existing stellar.toml data.
-
 **From domain (recommended):**
-
-This approach automatically fetches and parses the stellar.toml file from the specified domain using SEP-1 discovery.
 
 ```php
 <?php
 
 use Soneso\StellarSDK\SEP\RegulatedAssets\RegulatedAssetsService;
 
-// Loads stellar.toml and extracts regulated assets automatically
+// Loads stellar.toml and extracts regulated assets
 $service = RegulatedAssetsService::fromDomain("regulated-asset-issuer.com");
 ```
 
 **From StellarToml data:**
-
-Use this approach when you already have the stellar.toml data or need to specify a custom network and Horizon URL.
 
 ```php
 <?php
@@ -82,36 +73,16 @@ use Soneso\StellarSDK\SEP\RegulatedAssets\RegulatedAssetsService;
 use Soneso\StellarSDK\SEP\Toml\StellarToml;
 use Soneso\StellarSDK\Network;
 
-// Load stellar.toml separately for more control
 $toml = StellarToml::fromDomain("regulated-asset-issuer.com");
-
-// Create service with explicit network configuration
 $service = new RegulatedAssetsService(
     tomlData: $toml,
     network: Network::testnet()
 );
 ```
 
-**With custom Horizon URL:**
-
-Override the Horizon URL when using a private network or custom infrastructure.
-
-```php
-<?php
-
-use Soneso\StellarSDK\SEP\RegulatedAssets\RegulatedAssetsService;
-use Soneso\StellarSDK\Network;
-
-$service = RegulatedAssetsService::fromDomain(
-    domain: "regulated-asset-issuer.com",
-    horizonUrl: "https://my-horizon.example.com",
-    network: new Network("Custom Network Passphrase")
-);
-```
-
 ### Discovering Regulated Assets
 
-The service automatically extracts regulated assets from the stellar.toml file. Each `RegulatedAsset` contains the asset code, issuer, approval server URL, and optional approval criteria.
+The service extracts regulated assets from stellar.toml automatically:
 
 ```php
 <?php
@@ -120,13 +91,11 @@ use Soneso\StellarSDK\SEP\RegulatedAssets\RegulatedAssetsService;
 
 $service = RegulatedAssetsService::fromDomain("regulated-asset-issuer.com");
 
-// Iterate through all regulated assets defined in stellar.toml
 foreach ($service->regulatedAssets as $asset) {
     echo "Asset: " . $asset->code . PHP_EOL;
     echo "Issuer: " . $asset->issuer . PHP_EOL;
     echo "Approval server: " . $asset->approvalServer . PHP_EOL;
     
-    // approvalCriteria is optional - describes what the issuer checks
     if ($asset->approvalCriteria) {
         echo "Criteria: " . $asset->approvalCriteria . PHP_EOL;
     }
@@ -135,7 +104,7 @@ foreach ($service->regulatedAssets as $asset) {
 
 ### Checking Authorization Requirements
 
-Before transacting, verify that the asset issuer has properly configured their account with the required authorization flags (AUTH_REQUIRED and AUTH_REVOCABLE).
+Verify an asset has proper issuer flags before transacting:
 
 ```php
 <?php
@@ -145,19 +114,19 @@ use Soneso\StellarSDK\SEP\RegulatedAssets\RegulatedAssetsService;
 $service = RegulatedAssetsService::fromDomain("regulated-asset-issuer.com");
 $asset = $service->regulatedAssets[0];
 
-// Checks that issuer has both AUTH_REQUIRED and AUTH_REVOCABLE flags set
+// Checks that issuer has AUTH_REQUIRED and AUTH_REVOCABLE flags
 $needsApproval = $service->authorizationRequired($asset);
 
 if ($needsApproval) {
-    echo "This asset requires approval server for all transactions" . PHP_EOL;
+    echo "This asset requires approval server for all transactions";
 } else {
-    echo "Warning: Asset flags not properly configured for regulation" . PHP_EOL;
+    echo "Warning: Asset flags not properly configured";
 }
 ```
 
 ### Building a Transaction for Approval
 
-Create and sign your transaction as usual, then submit the base64 XDR to the approval server instead of directly to the Stellar network.
+Create and sign your transaction, then submit for approval:
 
 ```php
 <?php
@@ -170,20 +139,19 @@ use Soneso\StellarSDK\SEP\RegulatedAssets\RegulatedAssetsService;
 use Soneso\StellarSDK\StellarSDK;
 use Soneso\StellarSDK\TransactionBuilder;
 
-// Initialize SDK and service
 $sdk = StellarSDK::getTestNetInstance();
 $service = RegulatedAssetsService::fromDomain("regulated-asset-issuer.com");
 $regulatedAsset = $service->regulatedAssets[0];
 
-// Sender's keypair - keep your secret key secure!
+// Sender's keypair
 $senderKeyPair = KeyPair::fromSeed("SCZANGBA5YHTNYVVV3C7CAZMTQDBJHJG...");
 $senderAccount = $sdk->requestAccount($senderKeyPair->getAccountId());
 
-// Build the payment transaction using the regulated asset
+// Build the payment transaction
 $asset = Asset::createNonNativeAsset($regulatedAsset->code, $regulatedAsset->issuer);
 
 $payment = (new PaymentOperationBuilder(
-    destination: "GDESTINATION...",
+    destination: "GDEST...",
     asset: $asset,
     amount: "100"
 ))->build();
@@ -192,13 +160,11 @@ $transaction = (new TransactionBuilder($senderAccount))
     ->addOperation($payment)
     ->build();
 
-// Sign with sender's key before submitting to approval server
+// Sign with sender's key
 $transaction->sign($senderKeyPair, Network::testnet());
 
-// Get the base64-encoded XDR envelope for submission
+// Submit to approval server
 $txXdr = $transaction->toEnvelopeXdrBase64();
-
-// Submit to approval server (not to Stellar network yet)
 $response = $service->postTransaction(
     tx: $txXdr,
     approvalServer: $regulatedAsset->approvalServer
@@ -207,7 +173,7 @@ $response = $service->postTransaction(
 
 ### Handling Approval Responses
 
-The approval server returns one of five response types. Use `instanceof` checks to determine how to proceed with each response.
+The approval server returns one of five response types:
 
 ```php
 <?php
@@ -224,44 +190,35 @@ $service = RegulatedAssetsService::fromDomain("regulated-asset-issuer.com");
 $response = $service->postTransaction($txXdr, $approvalServer);
 
 if ($response instanceof SEP08PostTransactionSuccess) {
-    // Transaction approved and signed by the issuer - ready to submit to network
-    echo "Approved!" . PHP_EOL;
-    if ($response->message) {
-        echo "Message: " . $response->message . PHP_EOL;
-    }
+    // Transaction approved and signed - submit to network
+    echo "Approved! Message: " . $response->message . PHP_EOL;
     $sdk = StellarSDK::getTestNetInstance();
     $result = $sdk->submitTransactionEnvelopeXdrBase64($response->tx);
-    echo "Submitted: " . $result->getHash() . PHP_EOL;
     
 } elseif ($response instanceof SEP08PostTransactionRevised) {
-    // Transaction was modified to be compliant - REVIEW CHANGES before submitting
+    // Transaction was modified to be compliant - review and submit
     echo "Revised for compliance: " . $response->message . PHP_EOL;
-    // IMPORTANT: Inspect $response->tx to see what changed before submitting
-    // The issuer may have added operations, changed amounts, etc.
+    // Review $response->tx to see what changed before submitting
     
 } elseif ($response instanceof SEP08PostTransactionPending) {
-    // Approval pending - check back later (timeout is in milliseconds)
-    $timeoutSeconds = $response->timeout / 1000;
-    echo "Pending. Check again in " . $timeoutSeconds . " seconds" . PHP_EOL;
-    if ($response->message) {
-        echo "Message: " . $response->message . PHP_EOL;
-    }
+    // Approval pending - check back later
+    echo "Pending. Check again in " . $response->timeout . " seconds" . PHP_EOL;
+    echo "Message: " . $response->message . PHP_EOL;
     
 } elseif ($response instanceof SEP08PostTransactionActionRequired) {
-    // User action needed - see next section for handling this response
+    // User action needed - see next section
     echo "Action required: " . $response->message . PHP_EOL;
     echo "Action URL: " . $response->actionUrl . PHP_EOL;
-    echo "Action method: " . $response->actionMethod . PHP_EOL; // 'GET' or 'POST'
     
 } elseif ($response instanceof SEP08PostTransactionRejected) {
-    // Transaction rejected - cannot be made compliant
+    // Transaction rejected
     echo "Rejected: " . $response->error . PHP_EOL;
 }
 ```
 
 ### Handling Action Required
 
-When the approval server needs additional information (KYC/AML data), it returns an `action_required` response. The `actionMethod` property indicates how to provide the information.
+When the server needs additional information:
 
 ```php
 <?php
@@ -277,17 +234,16 @@ $response = $service->postTransaction($txXdr, $approvalServer);
 if ($response instanceof SEP08PostTransactionActionRequired) {
     echo "Action needed: " . $response->message . PHP_EOL;
     
-    // Check what SEP-9 fields are requested (optional - server may not specify)
+    // Check what fields are required
     if ($response->actionFields) {
-        echo "Requested fields:" . PHP_EOL;
+        echo "Required fields:" . PHP_EOL;
         foreach ($response->actionFields as $field) {
             echo "  - $field" . PHP_EOL;
         }
     }
     
-    // Handle based on action method (default is 'GET')
+    // If action_method is POST, submit fields programmatically
     if ($response->actionMethod === "POST") {
-        // Submit fields programmatically if wallet has them
         $actionResponse = $service->postAction(
             url: $response->actionUrl,
             actionFields: [
@@ -297,29 +253,24 @@ if ($response instanceof SEP08PostTransactionActionRequired) {
         );
         
         if ($actionResponse instanceof SEP08PostActionDone) {
-            // Server has enough info - resubmit the original transaction
+            // Resubmit the original transaction
             echo "Action complete. Resubmitting transaction..." . PHP_EOL;
             $response = $service->postTransaction($txXdr, $approvalServer);
             
         } elseif ($actionResponse instanceof SEP08PostActionNextUrl) {
-            // More steps needed - user must complete action in browser
-            echo "Additional action needed." . PHP_EOL;
-            if ($actionResponse->message) {
-                echo "Instructions: " . $actionResponse->message . PHP_EOL;
-            }
+            // More steps needed - open URL in browser
             echo "Open this URL: " . $actionResponse->nextUrl . PHP_EOL;
         }
     } else {
-        // Action method is GET (default) - open URL in browser for user
+        // action_method is GET - open URL in browser for user
         echo "Open browser: " . $response->actionUrl . PHP_EOL;
-        // After user completes action, resubmit the original transaction
     }
 }
 ```
 
 ## Complete Workflow Example
 
-This full example demonstrates the entire approval flow for a regulated asset transfer, including authorization checks, transaction building, and response handling.
+Full example showing the approval flow for a regulated asset transfer:
 
 ```php
 <?php
@@ -337,7 +288,7 @@ use Soneso\StellarSDK\SEP\RegulatedAssets\SEP08PostTransactionRejected;
 use Soneso\StellarSDK\StellarSDK;
 use Soneso\StellarSDK\TransactionBuilder;
 
-// Setup - initialize SDK and load regulated asset information
+// Setup
 $sdk = StellarSDK::getTestNetInstance();
 $service = RegulatedAssetsService::fromDomain("regulated-asset-issuer.com");
 $regulatedAsset = $service->regulatedAssets[0];
@@ -345,12 +296,12 @@ $regulatedAsset = $service->regulatedAssets[0];
 $senderKeyPair = KeyPair::fromSeed("SCZANGBA5YHTNYVVV3C7CAZMTQDBJHJG...");
 $recipientId = "GDESTINATION...";
 
-// Step 1: Verify asset requires approval (issuer has proper flags)
+// Verify asset requires approval
 if (!$service->authorizationRequired($regulatedAsset)) {
     throw new Exception("Asset not properly configured for regulation");
 }
 
-// Step 2: Build and sign the transaction
+// Build transaction
 $senderAccount = $sdk->requestAccount($senderKeyPair->getAccountId());
 $asset = Asset::createNonNativeAsset($regulatedAsset->code, $regulatedAsset->issuer);
 
@@ -363,36 +314,27 @@ $transaction = (new TransactionBuilder($senderAccount))
 $transaction->sign($senderKeyPair, Network::testnet());
 $txXdr = $transaction->toEnvelopeXdrBase64();
 
-// Step 3: Submit for approval
+// Submit for approval
 $response = $service->postTransaction($txXdr, $regulatedAsset->approvalServer);
 
-// Step 4: Handle response
+// Handle response
 $approvedTx = null;
 
 if ($response instanceof SEP08PostTransactionSuccess) {
-    // Approved without changes
     $approvedTx = $response->tx;
-    
 } elseif ($response instanceof SEP08PostTransactionRevised) {
-    // Transaction was modified - review changes before accepting
+    // Review what changed before accepting
     echo "Transaction revised: " . $response->message . PHP_EOL;
-    // IMPORTANT: Inspect the revised transaction before submitting
     $approvedTx = $response->tx;
-    
 } elseif ($response instanceof SEP08PostTransactionPending) {
-    // Wait and retry (timeout is in milliseconds)
-    $waitSeconds = max(5, $response->timeout / 1000);
-    echo "Try again in " . $waitSeconds . " seconds" . PHP_EOL;
-    
+    echo "Try again in " . $response->timeout . " seconds" . PHP_EOL;
 } elseif ($response instanceof SEP08PostTransactionActionRequired) {
-    // User must complete action at the provided URL
     echo "User action needed at: " . $response->actionUrl . PHP_EOL;
-    
 } elseif ($response instanceof SEP08PostTransactionRejected) {
     throw new Exception("Transaction rejected: " . $response->error);
 }
 
-// Step 5: Submit approved transaction to Stellar network
+// Submit approved transaction to network
 if ($approvedTx) {
     $result = $sdk->submitTransactionEnvelopeXdrBase64($approvedTx);
     echo "Transaction submitted: " . $result->getHash() . PHP_EOL;
@@ -400,8 +342,6 @@ if ($approvedTx) {
 ```
 
 ## Error Handling
-
-The SDK throws specific exceptions for different error conditions. Handle each type appropriately to provide meaningful feedback to users.
 
 ```php
 <?php
@@ -412,49 +352,31 @@ use Soneso\StellarSDK\SEP\RegulatedAssets\SEP08InvalidPostTransactionResponse;
 use Soneso\StellarSDK\SEP\RegulatedAssets\SEP08InvalidPostActionResponse;
 use Soneso\StellarSDK\Exceptions\HorizonRequestException;
 use GuzzleHttp\Exception\GuzzleException;
-use Exception;
 
 try {
-    // Initialize service - may fail if stellar.toml is incomplete
     $service = RegulatedAssetsService::fromDomain("regulated-asset-issuer.com");
-    
-    // Check authorization flags - may fail if Horizon is unreachable
-    $needsApproval = $service->authorizationRequired($service->regulatedAssets[0]);
-    
-    // Submit transaction - may fail if approval server returns invalid response
     $response = $service->postTransaction($txXdr, $approvalServer);
     
 } catch (SEP08IncompleteInitData $e) {
-    // Missing NETWORK_PASSPHRASE or HORIZON_URL in stellar.toml
-    // and values could not be inferred from known networks
-    echo "stellar.toml configuration incomplete: " . $e->getMessage() . PHP_EOL;
-    echo "Ensure NETWORK_PASSPHRASE and HORIZON_URL are set, or provide them explicitly." . PHP_EOL;
+    // Missing network passphrase or horizon URL in stellar.toml
+    echo "stellar.toml incomplete: " . $e->getMessage();
     
 } catch (SEP08InvalidPostTransactionResponse $e) {
-    // Approval server returned malformed response (missing fields, unknown status, etc.)
-    echo "Invalid response from approval server: " . $e->getMessage() . PHP_EOL;
-    echo "HTTP status: " . $e->getCode() . PHP_EOL;
-    // Consider retry with exponential backoff for transient errors
+    // Approval server returned unexpected response
+    echo "Invalid response from approval server: " . $e->getMessage();
+    echo "HTTP status: " . $e->getCode();
     
 } catch (SEP08InvalidPostActionResponse $e) {
-    // Action endpoint returned malformed response
-    echo "Invalid action response: " . $e->getMessage() . PHP_EOL;
-    echo "HTTP status: " . $e->getCode() . PHP_EOL;
-    // Fall back to opening action_url in browser
+    // Action endpoint returned unexpected response
+    echo "Invalid action response: " . $e->getMessage();
     
 } catch (HorizonRequestException $e) {
-    // Failed to check issuer flags or submit transaction
-    echo "Horizon error: " . $e->getMessage() . PHP_EOL;
-    // Check if Horizon is reachable and issuer account exists
+    // Failed to check issuer flags
+    echo "Horizon error: " . $e->getMessage();
     
 } catch (GuzzleException $e) {
-    // Network error (connection timeout, DNS failure, etc.)
-    echo "Network request failed: " . $e->getMessage() . PHP_EOL;
-    // Implement retry logic with backoff
-    
-} catch (Exception $e) {
-    // Catch-all for unexpected errors
-    echo "Unexpected error: " . $e->getMessage() . PHP_EOL;
+    // Network error
+    echo "Request failed: " . $e->getMessage();
 }
 ```
 
@@ -464,24 +386,9 @@ try {
 |---------------|--------|---------|
 | `SEP08PostTransactionSuccess` | `success` | Approved and signed - submit it |
 | `SEP08PostTransactionRevised` | `revised` | Modified for compliance - review before submitting |
-| `SEP08PostTransactionPending` | `pending` | Check back after `timeout` milliseconds |
+| `SEP08PostTransactionPending` | `pending` | Check back after `timeout` seconds |
 | `SEP08PostTransactionActionRequired` | `action_required` | User must complete action at URL |
 | `SEP08PostTransactionRejected` | `rejected` | Denied - see error message |
-
-### Action Response Types
-
-| Response Class | Result | Meaning |
-|---------------|--------|---------|
-| `SEP08PostActionDone` | `no_further_action_required` | Resubmit the original transaction |
-| `SEP08PostActionNextUrl` | `follow_next_url` | Open `nextUrl` in browser for user |
-
-### Exception Types
-
-| Exception Class | Cause |
-|----------------|-------|
-| `SEP08IncompleteInitData` | Missing network passphrase or Horizon URL |
-| `SEP08InvalidPostTransactionResponse` | Malformed approval server response |
-| `SEP08InvalidPostActionResponse` | Malformed action endpoint response |
 
 ## Related SEPs
 
