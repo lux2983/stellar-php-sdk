@@ -827,3 +827,4 @@ while ($attempt < $maxAttempts) {
 - [SEP-12](sep-12.md) - KYC API (for customer information submission)
 - [SEP-24](sep-24.md) - Interactive deposits/withdrawals (alternative approach)
 - [SEP-38](sep-38.md) - Quotes API (for exchange operations)
+- [SEP-45](sep-45.md) - Soroban contract authentication (alternative to SEP-10 for contract accounts)
