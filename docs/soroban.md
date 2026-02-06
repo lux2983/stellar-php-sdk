@@ -1259,6 +1259,7 @@ if ($contractInfo !== null) {
 
 ## Further Reading
 
+- [Advanced Topics](advanced.md) — Multi-signature, fee optimization, and production patterns
 - [Soroban Examples](https://github.com/stellar/soroban-examples) — Official example contracts
 - [Soroban Docs](https://developers.stellar.org/docs/smart-contracts) — Protocol details
 - [RPC API Reference](https://developers.stellar.org/docs/data/rpc/api-reference) — Soroban RPC methods
