@@ -1259,14 +1259,15 @@ if ($contractInfo !== null) {
 
 ## Further Reading
 
-- [Advanced Topics](advanced.md) — Multi-signature, fee optimization, and production patterns
-- [Soroban Examples](https://github.com/stellar/soroban-examples) — Official example contracts
-- [Soroban Docs](https://developers.stellar.org/docs/smart-contracts) — Protocol details
-- [RPC API Reference](https://developers.stellar.org/docs/data/rpc/api-reference) — Soroban RPC methods
 - [SorobanClientTest.php](https://github.com/Soneso/stellar-php-sdk/blob/main/Soneso/StellarSDKTests/SorobanClientTest.php) — High-level API tests
 - [SorobanAuthTest.php](https://github.com/Soneso/stellar-php-sdk/blob/main/Soneso/StellarSDKTests/SorobanAuthTest.php) — Authorization tests
 - [SorobanAtomicSwapTest.php](https://github.com/Soneso/stellar-php-sdk/blob/main/Soneso/StellarSDKTests/SorobanAtomicSwapTest.php) — Multi-party signing
 - [SorobanParserTest.php](https://github.com/Soneso/stellar-php-sdk/blob/main/Soneso/StellarSDKTests/SorobanParserTest.php) — Contract parsing
+- [Soroban Docs](https://developers.stellar.org/docs/smart-contracts) — Protocol details
+- [Soroban Examples](https://github.com/stellar/soroban-examples) — Official example contracts
+- [RPC API Reference](https://developers.stellar.org/docs/data/rpc/api-reference) — Soroban RPC methods
+- [SEP Protocols](sep/README.md) — Stellar Ecosystem Proposals
+- [Advanced Topics](advanced.md) — Multi-signature, fee optimization, and production patterns
 
 ---
 
