@@ -1,0 +1,437 @@
+# Getting Started Guide
+
+**Looking for a quick start? See [Quick Start](quick-start.md) to get running in 15 minutes.**
+
+This guide covers the fundamentals of the Stellar PHP SDK.
+
+## Table of Contents
+
+- [Installation](#installation)
+- [Basic Concepts](#basic-concepts)
+- [KeyPair Management](#keypair-management)
+- [Account Operations](#account-operations)
+- [Transaction Building](#transaction-building)
+- [Connecting to Networks](#connecting-to-networks)
+- [Error Handling](#error-handling)
+- [Best Practices](#best-practices)
+- [Next Steps](#next-steps)
+
+## Installation
+
+Install via Composer:
+
+```bash
+composer require soneso/stellar-php-sdk
+```
+
+**Requirements:** PHP 8.0+, ext-sodium, ext-json, ext-curl
+
+## Basic Concepts
+
+### Networks
+
+Stellar has multiple networks with unique passphrases:
+
+```php
+<?php
+
+use Soneso\StellarSDK\Network;
+
+$network = Network::testnet();   // Development (free test XLM via Friendbot)
+$network = Network::public();    // Production (real assets)
+$network = Network::futurenet(); // Upcoming protocol features
+```
+
+### Accounts
+
+Every Stellar account has:
+- **Account ID** (public key): Starts with `G`. Safe to share.
+- **Secret Seed** (private key): Starts with `S`. Keep secret!
+
+An account must hold at least 1 XLM to exist (the base reserve).
+
+### Assets
+
+```php
+<?php
+
+use Soneso\StellarSDK\Asset;
+
+// Native XLM
+$xlm = Asset::native();
+
+// Issued asset
+$usdc = Asset::createNonNativeAsset("USDC", "GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN");
+```
+
+### Operations and Transactions
+
+A **transaction** groups one or more **operations** that execute atomically. Common operations:
+
+- `CreateAccountOperation` — Create a new account
+- `PaymentOperation` — Send assets
+- `ChangeTrustOperation` — Establish a trustline
+- `ManageSellOfferOperation` — Place a DEX order
+
+## KeyPair Management
+
+### Generate a Random KeyPair
+
+```php
+<?php
+
+use Soneso\StellarSDK\Crypto\KeyPair;
+
+$keyPair = KeyPair::random();
+
+$accountId = $keyPair->getAccountId();   // GCFXHS4GXL6B... (public)
+$secretSeed = $keyPair->getSecretSeed(); // SAV76USXIJOB... (private)
+```
+
+### Import from Secret Seed
+
+```php
+<?php
+
+use Soneso\StellarSDK\Crypto\KeyPair;
+
+// Restore keypair from seed (can sign transactions)
+$keyPair = KeyPair::fromSeed("SDJHRQF4GCMIIKAAAQ6IHY42X73FQFLHUULAPSKKD4DFDM7UXWWCRHBE");
+```
+
+### Import from Account ID
+
+```php
+<?php
+
+use Soneso\StellarSDK\Crypto\KeyPair;
+
+// Public key only (cannot sign)
+$keyPair = KeyPair::fromAccountId("GCZHXL5HXQX5ABDM26LHYRCQZ5OJFHLOPLZX47WEBP3V2PF5AVFK2A5D");
+```
+
+### Mnemonic Phrases (SEP-5)
+
+For wallet backup and recovery:
+
+```php
+<?php
+
+use Soneso\StellarSDK\Crypto\KeyPair;
+use Soneso\StellarSDK\SEP\Derivation\Mnemonic;
+
+// Generate 24-word mnemonic
+$mnemonic = Mnemonic::generate24WordsMnemonic();
+$words = implode(" ", $mnemonic->words);
+// Store these words securely
+
+// Derive accounts from mnemonic
+$keyPair0 = KeyPair::fromMnemonic($mnemonic, 0);
+$keyPair1 = KeyPair::fromMnemonic($mnemonic, 1);
+
+// Restore from existing words
+$mnemonic = Mnemonic::mnemonicFromWords("abandon abandon ... about");
+$keyPair = KeyPair::fromMnemonic($mnemonic, 0, "optional-passphrase");
+```
+
+## Account Operations
+
+### Fund on Testnet
+
+```php
+<?php
+
+use Soneso\StellarSDK\Crypto\KeyPair;
+use Soneso\StellarSDK\Util\FriendBot;
+
+$keyPair = KeyPair::random();
+$funded = FriendBot::fundTestAccount($keyPair->getAccountId());
+```
+
+### Create Account on Public Network
+
+```php
+<?php
+
+use Soneso\StellarSDK\StellarSDK;
+use Soneso\StellarSDK\Crypto\KeyPair;
+use Soneso\StellarSDK\Network;
+use Soneso\StellarSDK\TransactionBuilder;
+use Soneso\StellarSDK\CreateAccountOperationBuilder;
+
+$sdk = StellarSDK::getPublicNetInstance();
+
+$sourceKeyPair = KeyPair::fromSeed("SAPS66IJDXUSFDSDKIHR4LN6YPXIGCM5FBZ7GE66FDKFJRYJGFW7ZHYF");
+$newKeyPair = KeyPair::random();
+
+$sourceAccount = $sdk->requestAccount($sourceKeyPair->getAccountId());
+
+$createOp = (new CreateAccountOperationBuilder(
+    $newKeyPair->getAccountId(),
+    "10" // Starting balance in XLM
+))->build();
+
+$transaction = (new TransactionBuilder($sourceAccount))
+    ->addOperation($createOp)
+    ->build();
+
+$transaction->sign($sourceKeyPair, Network::public());
+$response = $sdk->submitTransaction($transaction);
+
+if ($response->isSuccessful()) {
+    echo "Account created: " . $newKeyPair->getAccountId() . "\n";
+}
+```
+
+### Query Account Data
+
+```php
+<?php
+
+use Soneso\StellarSDK\StellarSDK;
+use Soneso\StellarSDK\Asset;
+
+$sdk = StellarSDK::getTestNetInstance();
+
+// Check if account exists
+if (!$sdk->accountExists($accountId)) {
+    echo "Account not found\n";
+    return;
+}
+
+$account = $sdk->requestAccount($accountId);
+
+echo "Sequence: " . $account->getSequenceNumber() . "\n";
+
+// List balances
+foreach ($account->getBalances() as $balance) {
+    if ($balance->getAssetType() === Asset::TYPE_NATIVE) {
+        echo "XLM: " . $balance->getBalance() . "\n";
+    } else {
+        echo $balance->getAssetCode() . ": " . $balance->getBalance() . "\n";
+    }
+}
+
+// List signers
+foreach ($account->getSigners() as $signer) {
+    echo "Signer: " . $signer->getKey() . " (weight: " . $signer->getWeight() . ")\n";
+}
+```
+
+## Transaction Building
+
+### Builder Pattern
+
+```php
+<?php
+
+use Soneso\StellarSDK\TransactionBuilder;
+use Soneso\StellarSDK\Memo;
+
+$transaction = (new TransactionBuilder($sourceAccount))
+    ->addOperation($operation1)
+    ->addOperation($operation2)
+    ->addMemo(Memo::text("Payment reference"))
+    ->setMaxOperationFee(200) // 200 stroops per operation
+    ->build();
+```
+
+### Adding Operations
+
+```php
+<?php
+
+use Soneso\StellarSDK\PaymentOperationBuilder;
+use Soneso\StellarSDK\ChangeTrustOperationBuilder;
+use Soneso\StellarSDK\Asset;
+
+// Payment
+$paymentOp = (new PaymentOperationBuilder(
+    "GDESTINATION...",
+    Asset::native(),
+    "100.50"
+))->build();
+
+// Add trustline
+$trustOp = (new ChangeTrustOperationBuilder(
+    Asset::createNonNativeAsset("USD", "GISSUER..."),
+    "10000"
+))->build();
+```
+
+### Signing and Submitting
+
+```php
+<?php
+
+use Soneso\StellarSDK\Network;
+
+// Sign (use correct network!)
+$transaction->sign($keyPair, Network::testnet());
+
+// Multi-sig: add multiple signatures
+$transaction->sign($keyPairA, Network::testnet());
+$transaction->sign($keyPairB, Network::testnet());
+
+// Submit
+$response = $sdk->submitTransaction($transaction);
+
+if ($response->isSuccessful()) {
+    echo "Hash: " . $response->getHash() . "\n";
+    echo "Ledger: " . $response->getLedger() . "\n";
+}
+```
+
+### Complete Payment Example
+
+```php
+<?php
+
+use Soneso\StellarSDK\StellarSDK;
+use Soneso\StellarSDK\Crypto\KeyPair;
+use Soneso\StellarSDK\Network;
+use Soneso\StellarSDK\TransactionBuilder;
+use Soneso\StellarSDK\PaymentOperationBuilder;
+use Soneso\StellarSDK\Asset;
+use Soneso\StellarSDK\Memo;
+
+$sdk = StellarSDK::getTestNetInstance();
+
+$senderKeyPair = KeyPair::fromSeed("SA52PD5FN425CUONRMMX2CY5HB6I473A5OYNIVU67INROUZ6W4SPHXZB");
+$destination = "GCRFFUKMUWWBRIA6ABRDFL5NKO6CKDB2IOX7MOS2TRLXNXQD255Z2MYG";
+
+$senderAccount = $sdk->requestAccount($senderKeyPair->getAccountId());
+
+$paymentOp = (new PaymentOperationBuilder($destination, Asset::native(), "100"))->build();
+
+$transaction = (new TransactionBuilder($senderAccount))
+    ->addOperation($paymentOp)
+    ->addMemo(Memo::text("Coffee payment"))
+    ->build();
+
+$transaction->sign($senderKeyPair, Network::testnet());
+$response = $sdk->submitTransaction($transaction);
+
+if ($response->isSuccessful()) {
+    echo "Payment sent! Hash: " . $response->getHash() . "\n";
+}
+```
+
+## Connecting to Networks
+
+```php
+<?php
+
+use Soneso\StellarSDK\StellarSDK;
+
+// Testnet (https://horizon-testnet.stellar.org)
+$sdk = StellarSDK::getTestNetInstance();
+
+// Public network (https://horizon.stellar.org)
+$sdk = StellarSDK::getPublicNetInstance();
+
+// Custom Horizon server
+$sdk = new StellarSDK("https://horizon.your-company.com");
+```
+
+## Error Handling
+
+### Horizon Request Exceptions
+
+```php
+<?php
+
+use Soneso\StellarSDK\StellarSDK;
+use Soneso\StellarSDK\Exceptions\HorizonRequestException;
+
+$sdk = StellarSDK::getTestNetInstance();
+
+try {
+    $account = $sdk->requestAccount("GINVALIDACCOUNTID");
+} catch (HorizonRequestException $e) {
+    echo "HTTP Status: " . $e->getStatusCode() . "\n";
+    echo "Error: " . $e->getMessage() . "\n";
+    
+    $errorResponse = $e->getHorizonErrorResponse();
+    if ($errorResponse) {
+        echo "Detail: " . $errorResponse->getDetail() . "\n";
+    }
+}
+```
+
+### Transaction Failures
+
+```php
+<?php
+
+use Soneso\StellarSDK\Exceptions\HorizonRequestException;
+
+try {
+    $response = $sdk->submitTransaction($transaction);
+    if ($response->isSuccessful()) {
+        echo "Success!\n";
+    }
+} catch (HorizonRequestException $e) {
+    $errorResponse = $e->getHorizonErrorResponse();
+    if ($errorResponse) {
+        $extras = $errorResponse->getExtras();
+        if ($extras && isset($extras['result_codes'])) {
+            $codes = $extras['result_codes'];
+            echo "Transaction: " . ($codes['transaction'] ?? 'unknown') . "\n";
+            foreach ($codes['operations'] ?? [] as $i => $opCode) {
+                echo "Operation $i: $opCode\n";
+            }
+        }
+    }
+}
+```
+
+### Common Error Codes
+
+| Code | Meaning |
+|------|---------|
+| `tx_bad_seq` | Wrong sequence number. Reload account and retry. |
+| `tx_insufficient_fee` | Fee too low. Increase `setMaxOperationFee()`. |
+| `tx_insufficient_balance` | Not enough XLM for operation + fees + reserves. |
+| `op_underfunded` | Source lacks funds for payment amount. |
+| `op_no_trust` | Destination lacks trustline for asset. |
+| `op_line_full` | Destination trustline limit exceeded. |
+| `op_no_destination` | Destination account doesn't exist. |
+
+## Best Practices
+
+**1. Never expose secret seeds**
+```php
+// Bad
+echo "Error with account: " . $keyPair->getSecretSeed();
+
+// Good  
+echo "Error with account: " . $keyPair->getAccountId();
+```
+
+**2. Use testnet for development** — Always test against testnet first.
+
+**3. Set appropriate fees**
+```php
+<?php
+
+$feeStats = $sdk->requestFeeStats();
+$recommendedFee = $feeStats->getLastLedgerBaseFee();
+```
+
+**4. Handle errors gracefully** — Wrap network operations in try-catch.
+
+**5. Verify destination exists** — Before payments, check if account exists. If not, use `CreateAccountOperation`.
+
+**6. Use memos for exchanges** — Many exchanges require a memo to credit your account.
+
+## Next Steps
+
+- **[Quick Start](quick-start.md)** — First transaction in 15 minutes
+- **[SDK Usage](sdk-usage.md)** — All operations, queries, and patterns
+- **[SEP Protocols](sep/README.md)** — Authentication, deposits, cross-border payments
+- **[Soroban Guide](soroban.md)** — Smart contract interaction
+
+---
+
+**Navigation**: [← Quick Start](quick-start.md) | [SDK Usage →](sdk-usage.md)

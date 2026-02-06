@@ -1,288 +1,94 @@
-
 # [Stellar SDK for PHP](https://github.com/Soneso/stellar-php-sdk)
 
 ![v1.9.2](https://img.shields.io/badge/v1.9.2-green.svg) [![codecov](https://codecov.io/gh/Soneso/stellar-php-sdk/branch/main/graph/badge.svg)](https://codecov.io/gh/Soneso/stellar-php-sdk) [![Ask DeepWiki](https://deepwiki.com/badge.svg)](https://deepwiki.com/Soneso/stellar-php-sdk)
 
-The Soneso open source Stellar SDK for PHP provides APIs to build and sign transactions, connect and query [Horizon](https://github.com/stellar/horizon).
+The Soneso open source Stellar SDK for PHP provides APIs to build and sign transactions, connect and query [Horizon](https://github.com/stellar/horizon), and interact with [Soroban](https://soroban.stellar.org/) smart contracts.
 
 ## Installation
 
-## Latest stable release
+```bash
+composer require soneso/stellar-php-sdk:1.9.2
+```
 
-```composer require soneso/stellar-php-sdk:1.9.2```
+**Requirements:** PHP 8.0+
 
-## Quick Start
+## Quick Example
 
-### 1. Create a Stellar key pair
-
-#### Random generation
 ```php
-// create a completely new and unique pair of keys.
+<?php
+require 'vendor/autoload.php';
+
+use Soneso\StellarSDK\Crypto\KeyPair;
+use Soneso\StellarSDK\StellarSDK;
+use Soneso\StellarSDK\Util\FriendBot;
+
+// Generate a new keypair
 $keyPair = KeyPair::random();
+echo "Public Key: " . $keyPair->getAccountId() . "\n";
+echo "Secret Key: " . $keyPair->getSecretSeed() . "\n";
 
-print($keyPair->getAccountId());
-// GCFXHS4GXL6BVUCXBWXGTITROWLVYXQKQLF4YH5O5JT3YZXCYPAFBJZB
+// Fund on testnet
+FriendBot::fundTestAccount($keyPair->getAccountId());
 
-print($keyPair->getSecretSeed());
-// SAV76USXIJOBMEQXPANUOQM6F5LIOTLPDIDVRJBFFE2MDJXG24TAPUU7
-```
+// Check balance
+$sdk = StellarSDK::getTestNetInstance();
+$account = $sdk->requestAccount($keyPair->getAccountId());
 
-### 2. Create an account
-After the key pair generation, you have already got the address, but it is not activated until someone transfers at least 1 lumen into it.
-
-#### 2.1 Testnet
-If you want to play in the Stellar test network, the SDK can ask Friendbot to create an account for you as shown below:
-```php
-$funded = FriendBot::fundTestAccount($keyPair->getAccountId());
-print ($funded ? "account funded" : "account not funded");
-```
-
-#### 2.2 Public net
-
-On the other hand, if you would like to create an account in the public net, you should buy some Stellar Lumens (XLM) from an exchange. When you withdraw the Lumens into your new account, the exchange will automatically create the account for you. However, if you want to create an account from another account of your own, you may run the following code:
-
-```php
-/// Init sdk for public net
-$sdk = StellarSDK::getPublicNetInstance();
- 
-/// Create a key pair for your existing account.
-$keyA = KeyPair::fromSeed("SAPS66IJDXUSFDSDKIHR4LN6YPXIGCM5FBZ7GE66FDKFJRYJGFW7ZHYF");
-
-/// Load the data of your account from the stellar network.
-$accA = $sdk->requestAccount($keyA->getAccountId());
-
-/// Create a keypair for a new account.
-$keyB = KeyPair::random();
-
-/// Create the operation builder.
-$createAccBuilder = new CreateAccountOperationBuilder($keyB->getAccountId(), "3"); // send 3 XLM (lumen)
-
-// Create the transaction.
-$transaction = (new TransactionBuilder($accA))
-    ->addOperation($createAccBuilder->build())
-    ->build();
-
-/// Sign the transaction with the key pair of your existing account.
-$transaction->sign($keyA, Network::public());
-
-/// Submit the transaction to the stellar network.
-$response = $sdk->submitTransaction($transaction);
-
-if ($response->isSuccessful()) {
-    printf (PHP_EOL."account %s created", $keyB->getAccountId());
-}
-```
-
-### 3. Check account
-#### 3.1 Basic info
-
-After creating the account, we may check the basic information of the account.
-
-```php
-$accountId = "GCQHNQR2VM5OPXSTWZSF7ISDLE5XZRF73LNU6EOZXFQG2IJFU4WB7VFY";
-
-// Request the account data.
-$account = $sdk->requestAccount($accountId);
-
-// You can check the `balance`, `sequence`, `flags`, `signers`, `data` etc.
 foreach ($account->getBalances() as $balance) {
-    switch ($balance->getAssetType()) {
-        case Asset::TYPE_NATIVE:
-            printf (PHP_EOL."Balance: %s XLM", $balance->getBalance() );
-            break;
-        default:
-            printf(PHP_EOL."Balance: %s %s Issuer: %s",
-                $balance->getBalance(), $balance->getAssetCode(),
-                $balance->getAssetIssuer());
-    }
-}
-
-print(PHP_EOL."Sequence number: ".$account->getSequenceNumber());
-
-foreach ($account->getSigners() as $signer) {
-    print(PHP_EOL."Signer public key: ".$signer->getKey());
+    echo "Balance: " . $balance->getBalance() . " " . $balance->getAssetType() . "\n";
 }
 ```
 
-#### 3.2 Check payments
+## Documentation
 
-You can check the payments connected to an account:
+| Guide | Description |
+|-------|-------------|
+| **[Quick Start](docs/quick-start.md)** | Your first transaction in 15 minutes |
+| **[Getting Started](docs/getting-started.md)** | Installation, keys, accounts, and fundamentals |
+| **[SDK Usage](docs/sdk-usage.md)** | Transactions, operations, Horizon queries, streaming |
+| **[Soroban](docs/soroban.md)** | Smart contract deployment and interaction |
+| **[SEP Protocols](docs/sep/README.md)** | Anchors, authentication, KYC, cross-border payments |
+| **[Advanced Topics](docs/advanced.md)** | Multi-sig, error handling, debugging, performance |
 
-```php
-$accountId = $account->getAccountId();
+## Supported Features
 
-$operationsPage = $sdk->payments()->forAccount($accountId)->order("desc")->execute();
+### Stellar Operations
+All 26 Stellar operations including payments, account management, DEX trading, claimable balances, liquidity pools, and sponsorship.
 
-foreach ($operationsPage->getOperations() as $payment) {
-    if ($payment->isTransactionSuccessful()) {
-        print(PHP_EOL."Transaction hash: ".$payment->getTransactionHash());
-    }
-}
-```
-You can use:`limit`, `order`, and `cursor` to customize the query. Get the most recent payments for accounts, ledgers and transactions.
+### SEP Protocols
+| SEP | Description |
+|-----|-------------|
+| [SEP-01](docs/sep/sep-01.md) | stellar.toml configuration |
+| [SEP-02](docs/sep/sep-02.md) | Federation protocol |
+| [SEP-05](docs/sep/sep-05.md) | Key derivation (BIP-39 mnemonics) |
+| [SEP-06](docs/sep/sep-06.md) | Programmatic deposit/withdrawal |
+| [SEP-07](docs/sep/sep-07.md) | URI scheme for signing |
+| [SEP-08](docs/sep/sep-08.md) | Regulated assets |
+| [SEP-10](docs/sep/sep-10.md) | Web authentication |
+| [SEP-11](docs/sep/sep-11.md) | Txrep (transaction representation) |
+| [SEP-12](docs/sep/sep-12.md) | KYC API |
+| [SEP-24](docs/sep/sep-24.md) | Interactive deposit/withdrawal |
+| [SEP-30](docs/sep/sep-30.md) | Account recovery |
+| [SEP-31](docs/sep/sep-31.md) | Cross-border payments |
+| [SEP-38](docs/sep/sep-38.md) | Anchor RFQ API |
+| [SEP-45](docs/sep/sep-45.md) | Contract account authentication |
+| [SEP-53](docs/sep/sep-53.md) | Message signing |
 
-Horizon has SSE support for push data. You can use it like this:
-```php
-$accountId = "GCDBA6GFGEHAMVAMRL6R2733EXUENJ35EMYNA2LE7WWJPVANORVC4UNA";
+### Soroban Smart Contracts
+- Contract deployment and invocation
+- High-level `SorobanClient` API
+- Authorization and multi-party signing
+- Type conversions and contract bindings
+- Event streaming
 
-$sdk->payments()->forAccount($accountId)->cursor("now")->stream(function(OperationResponse $response) {
-    if ($response instanceof PaymentOperationResponse) {
-        switch ($response->getAsset()->getType()) {
-            case Asset::TYPE_NATIVE:
-                printf("Payment of %s XLM from %s received.", $response->getAmount(), $response->getSourceAccount());
-                break;
-            default:
-                printf("Payment of %s %s from %s received.", $response->getAmount(),  $response->getAsset()->getCode(), $response->getSourceAccount());
-        }
-        if (floatval($response->getAmount()) > 0.5) {
-            exit;
-        }
-    }
-});
-```
-see also [stream payments example](examples/stream_payments.md)
+## Example Files
 
-#### 3.3 Check others
+The [examples](examples) folder contains standalone examples for individual operations and SEP protocols. These are useful as quick references, though the [documentation](docs/README.md) provides more context and complete workflows.
 
-Just like payments, you can check `assets`, `transactions`, `effects`, `offers`, `operations`, `ledgers` etc. 
+## Contributing
 
-```php
-$sdk->assets()
-$sdk->transactions()
-$sdk->effects()
-$sdk->offers()
-$sdk->operations()
-$sdk->orderBook()
-$sdk->trades()
-// add so on ...
-```
+See [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines on contributing to the SDK.
 
-### 4. Building and submitting transactions
+## License
 
-Example "send native payment":
-
-```php
-$senderKeyPair = KeyPair::fromSeed("SA52PD5FN425CUONRMMX2CY5HB6I473A5OYNIVU67INROUZ6W4SPHXZB");
-$destination = "GCRFFUKMUWWBRIA6ABRDFL5NKO6CKDB2IOX7MOS2TRLXNXQD255Z2MYG";
-
-// Load sender account data from the stellar network.
-$sender = $sdk->requestAccount($senderKeyPair->getAccountId());
-
-// Build the transaction to send 100 XLM native payment from sender to destination
-$paymentOperation = (new PaymentOperationBuilder($destination,Asset::native(), "100"))->build();
-$transaction = (new TransactionBuilder($sender))->addOperation($paymentOperation)->build();
-
-// Sign the transaction with the sender's key pair.
-$transaction->sign($senderKeyPair, Network::testnet());
-
-// Submit the transaction to the stellar network.
-$response = $sdk->submitTransaction($transaction);
-if ($response->isSuccessful()) {
-    print(PHP_EOL."Payment sent");
-}
-```
-
-## Documentation and Examples
-
-### Examples
-
-| Example                                                                                | Description | Documentation                                                                                                                                                                                                                                                                                        |
-|:---------------------------------------------------------------------------------------| :--- |:-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| [Create a new account](examples/create_account.md)                                     | A new account is created by another account. In the testnet we can also use Freindbot.| [Create account](https://www.stellar.org/developers/guides/concepts/list-of-operations.html#create-account)                                                                                                                                                                                          |
-| [Send native payment](examples/send_native_payment.md)                                 | A sender sends 100 XLM (Stellar Lumens) native payment to a receiver. | [Payments](https://www.stellar.org/developers/guides/concepts/list-of-operations.html#payment)                                                                                                                                                                                                       |
-| [Trustlines](examples/change_trust.md)                                                 | Creates, updates, and deletes a trustline. | [Change Trust](https://www.stellar.org/developers/learn/concepts/list-of-operations.html#change-trust) and [Assets documentation](https://www.stellar.org/developers/learn/concepts/assets.html)                                                                                                     |
-| [Send tokens - non native payment](examples/send_non_native_payment.md)                | Two accounts trust the same issuer account and custom token. They can now send this custom tokens to each other. | [Assets & Trustlines](https://www.stellar.org/developers/guides/concepts/assets.html) and [Change trust](https://www.stellar.org/developers/guides/concepts/list-of-operations.html#change-trust) and [Payments](https://www.stellar.org/developers/guides/concepts/list-of-operations.html#payment) |
-| [Path payments](examples/path_payments.md)                                             | Two accounts trust different custom tokens. The sender wants to send token "IOM" but the receiver wants to receive token "ECO".| [Path payment strict send](https://www.stellar.org/developers/guides/concepts/list-of-operations.html#path-payment-strict-send) and [Path payment strict receive](https://www.stellar.org/developers/guides/concepts/list-of-operations.html#path-payment-strict-receive)                            |
-| [Merge accounts](examples/merge_account.md)                                            | Merge one account into another. The first account is removed, the second receives the funds. | [Account merge](https://www.stellar.org/developers/guides/concepts/list-of-operations.html#account-merge)                                                                                                                                                                                            |
-| [Bump sequence number](examples/bump_sequence.md)                                      | In this example we will bump the sequence number of an account to a higher number. | [Bump sequence number](https://www.stellar.org/developers/guides/concepts/list-of-operations.html#bump-sequence)                                                                                                                                                                                     |
-| [Manage data](examples/manage_data.md)                                                 | Sets, modifies, or deletes a data entry (name/value pair) that is attached to a particular account. | [Manage data](https://www.stellar.org/developers/guides/concepts/list-of-operations.html#manage-data)                                                                                                                                                                                                |
-| [Manage buy offer](examples/manage_buy_offer.md)                                       | Creates, updates, or deletes an offer to buy one asset for another, otherwise known as a "bid" order on a traditional orderbook. | [Manage buy offer](https://www.stellar.org/developers/guides/concepts/list-of-operations.html#manage-buy-offer)                                                                                                                                                                                      |
-| [Manage sell offer](examples/manage_sell_offer.md)                                     | Creates, updates, or deletes an offer to sell one asset for another, otherwise known as a "ask" order or “offer” on a traditional orderbook. | [Manage sell offer](https://www.stellar.org/developers/guides/concepts/list-of-operations.html#manage-sell-offer)                                                                                                                                                                                    |
-| [Create passive sell offer](examples/create_passive_sell_offer.md)                     | Creates, updates and deletes an offer to sell one asset for another, otherwise known as a "ask" order or “offer” on a traditional orderbook, _without taking a reverse offer of equal price_. | [Create passive sell offer](https://www.stellar.org/developers/learn/concepts/list-of-operations.html#create-passive-sell-offer)                                                                                                                                                                     |
-| [Allow trust](examples/allow_trust.md)                                                 | Updates the authorized flag of an existing trustline. | [Allow trust](https://www.stellar.org/developers/learn/concepts/list-of-operations.html#allow-trust) and [Assets documentation](https://www.stellar.org/developers/learn/concepts/assets.html)                                                                                                       |
-| [Fee bump transaction](examples/fee_bump.md)                                           | Fee bump transactions allow an arbitrary account to pay the fee for a transaction.| [Fee bump transactions](https://github.com/stellar/stellar-protocol/blob/master/core/cap-0015.md)                                                                                                                                                                                                    |
-| [Muxed accounts](examples/muxed_account_payment.md)                                    | In this example we will see how to use a muxed account in a payment operation.| [First-class multiplexed accounts](https://github.com/stellar/stellar-protocol/blob/master/core/cap-0027.md)                                                                                                                                                                                         |
-| [Stream payments](examples/stream_payments.md)                                         | Listens for payments received by a given account.| [Streaming](https://developers.stellar.org/docs/data/apis/horizon/api-reference/structure/streaming)                                                                                                                                                                                                                              |
-| [SEP-0001: stellar.toml](examples/sep-0001-toml.md)                                    | In this example you can find out how to obtain data about an organization’s Stellar integration.| [SEP-0001](https://github.com/stellar/stellar-protocol/blob/master/ecosystem/sep-0001.md)                                                                                                                                                                                                            |
-| [SEP-0002: Federation](examples/sep-0002-federation.md)                                | This example shows how to resolve a stellar address, a stellar account id, a transaction id and a forward by using the federation protocol. | [SEP-0002](https://github.com/stellar/stellar-protocol/blob/master/ecosystem/sep-0002.md)                                                                                                                                                                                                            |
-| [SEP-0005: Key derivation](examples/sep-0005-key-derivation.md)                        | In this examples you can see how to generate 12 or 24 words mnemonics for different languages using the PHP SDK, how to generate key pairs from a mnemonic (with and without BIP 39 passphrase) and how to generate key pairs from a BIP 39 seed. | [SEP-0005](https://github.com/stellar/stellar-protocol/blob/master/ecosystem/sep-0005.md)                                                                                                                                                                                                            |
-| [SEP-0006: Deposit and Withdrawal API](examples/sep-0006-transfer.md)                  | In this examples you can see how to use the sdk to communicate with anchors.| [SEP-0006](https://github.com/stellar/stellar-protocol/blob/master/ecosystem/sep-0006.md)                                                                                                                                                                                                            |
-| [SEP-0007: URI Scheme to facilitate delegated signing](examples/sep-0007-urischeme.md) | In this examples you can see how to use the sdk to support SEP-0007 in your wallet or server.| [SEP-0007](https://github.com/stellar/stellar-protocol/blob/master/ecosystem/sep-0007.md)                                                                                                                                                                                                            |
-| [SEP-0008: Regulated Assets](examples/sep-0008-regulated-assets.md)                    | In this example you can see how to use the sdk to support Regulated Assets in your wallet.| [SEP-0008](https://github.com/stellar/stellar-protocol/blob/master/ecosystem/sep-0008.md)                                                                                                                                                                                                            |
-| [SEP-0010: Stellar Web Authentication](examples/sep-0010-webauth.md)                   | This example shows how to authenticate with any web service which requires a Stellar account ownership verification. | [SEP-0010](https://github.com/stellar/stellar-protocol/blob/master/ecosystem/sep-0010.md)                                                                                                                                                                                                            |
-| [SEP-0011: Txrep](examples/sep-0011-txrep.md)                                          | This example shows how to  to generate Txrep (human-readable low-level representation of Stellar transactions) from a transaction and how to create a transaction object from a Txrep string. | [SEP-0011](https://github.com/stellar/stellar-protocol/blob/master/ecosystem/sep-0011.md)                                                                                                                                                                                                            |
-| [SEP-0012: KYC API](examples/sep-0012-kyc.md)                                          | In this examples you can see how to use the sdk to send KYC data to anchors and other services. | [SEP-0012](https://github.com/stellar/stellar-protocol/blob/master/ecosystem/sep-0012.md)                                                                                                                                                                                                            |
-| [SEP-0024: Hosted Deposit and Withdrawal](examples/sep-0024-interactive.md)            | In this examples you can see how to interact with anchors in a standard way defined by SEP-0024. | [SEP-0024](https://github.com/stellar/stellar-protocol/blob/master/ecosystem/sep-0024.md)                                                                                                                                                                                                            |
-| [SEP-0030: Account Recovery](examples/sep-0030-recovery.md)                            |In this examples you can see how to recover accounts as defined by SEP-0030. | [SEP-0030](https://github.com/stellar/stellar-protocol/blob/master/ecosystem/sep-0030.md)                                                                                                                                                                                                            |
-| [SEP-0038: Quotes](examples/sep-0038-quote.md)                                         | In this examples you can learn how to get quotes as defined by SEP-0038. | [SEP-0038](https://github.com/stellar/stellar-protocol/blob/master/ecosystem/sep-0038.md)                                                                                                                                                                                                            |
-| [SEP-0031: Cross Border Payments](examples/sep-0031-cross-border-payments.md)          | In this examples you can learn how to make cross border payments as a Sending Anchor as defined by SEP-0031  | [SEP-0031](https://github.com/stellar/stellar-protocol/blob/master/ecosystem/sep-0031.md)                                                                                                                                                                                                            |
-| [SEP-0045: Web Authentication for Contract Accounts](examples/sep-0045-webauth-contracts.md) | This example shows how to authenticate Soroban contract accounts (C... addresses) with web services. | [SEP-0045](https://github.com/stellar/stellar-protocol/blob/master/ecosystem/sep-0045.md)                                                                                                                                                                                                            |
-| [SEP-0053: Sign and Verify Messages](examples/sep-0053-sign-verify-messages.md) | This example shows how to sign and verify arbitrary messages using Stellar keypairs. | [SEP-0053](https://github.com/stellar/stellar-protocol/blob/master/ecosystem/sep-0053.md)                                                                                                                                                                                                            |
-
-More examples can be found in the [tests](https://github.com/Soneso/stellar-php-sdk/tree/main/Soneso/StellarSDKTests).
-
-### API documentation
-
-The API reference can be found [here](https://soneso.github.io/stellar-php-sdk/packages/Soneso-StellarSDK.html). 
-
-### SEPs implemented
-
-- [SEP-0001: stellar.toml](https://github.com/stellar/stellar-protocol/blob/master/ecosystem/sep-0001.md)
-- [SEP-0002: Federation](https://github.com/stellar/stellar-protocol/blob/master/ecosystem/sep-0002.md)
-- [SEP-0005: Key derivation](https://github.com/stellar/stellar-protocol/blob/master/ecosystem/sep-0005.md)
-- [SEP-0006: Deposit and Withdrawal API](https://github.com/stellar/stellar-protocol/blob/master/ecosystem/sep-0006.md)
-- [SEP-0007: URI Scheme to facilitate delegated signing](https://github.com/stellar/stellar-protocol/blob/master/ecosystem/sep-0007.md)
-- [SEP-0008: Regulated Assets](https://github.com/stellar/stellar-protocol/blob/master/ecosystem/sep-0007.md)
-- [SEP-0009: Standard KYC Fields](https://github.com/stellar/stellar-protocol/blob/master/ecosystem/sep-0009.md)
-- [SEP-0010: Stellar Web Authentication](https://github.com/stellar/stellar-protocol/blob/master/ecosystem/sep-0010.md)
-- [SEP-0011: Txrep](https://github.com/stellar/stellar-protocol/blob/master/ecosystem/sep-0011.md)
-- [SEP-0012: KYC API](https://github.com/stellar/stellar-protocol/blob/master/ecosystem/sep-0012.md)
-- [SEP-0023: Strkeys](https://github.com/stellar/stellar-protocol/blob/master/ecosystem/sep-0023.md)
-- [SEP-0024: Hosted Deposit and Withdrawal](https://github.com/stellar/stellar-protocol/blob/master/ecosystem/sep-0024.md)
-- [SEP-0029: Account Memo Requirements](https://github.com/stellar/stellar-protocol/blob/master/ecosystem/sep-0029.md)
-- [SEP-0030: Account Recovery](https://github.com/stellar/stellar-protocol/blob/master/ecosystem/sep-0030.md)
-- [SEP-0038: Quotes](https://github.com/stellar/stellar-protocol/blob/master/ecosystem/sep-0038.md)
-- [SEP-0031: Cross Border Payments](https://github.com/stellar/stellar-protocol/blob/master/ecosystem/sep-0031.md)
-- [SEP-0045: Web Authentication for Contract Accounts](https://github.com/stellar/stellar-protocol/blob/master/ecosystem/sep-0045.md)
-- [SEP-0053: Sign and Verify Messages](https://github.com/stellar/stellar-protocol/blob/master/ecosystem/sep-0053.md)
-
-
-### Soroban Support
-
-This SDK offers full support for **Soroban**, the smart contract platform integrated into the Stellar network.
-
-Detailed documentation on using Soroban with this SDK is available [here](https://github.com/Soneso/stellar-php-sdk/blob/main/soroban.md).
-
-A practical example of Soroban integration can be seen in [Equillar](https://github.com/icolomina/equillar), an open-source investment platform built with PHP and Symfony. Equillar demonstrates how the PHP Stellar SDK can be used to connect to and interact with Soroban smart contracts that manage investment-related operations.
-
-## Compatibility matrices
-- [Horizon API compatibility matrix](https://github.com/Soneso/stellar-php-sdk/blob/main/compatibility/horizon/COMPATIBILITY_MATRIX.md)
-- [RPC API compatibility matrix](https://github.com/Soneso/stellar-php-sdk/blob/main/compatibility/rpc/RPC_COMPATIBILITY_MATRIX.md)
-- [SEP support compatibility matrices](https://github.com/Soneso/stellar-php-sdk/tree/main/compatibility/sep)
-
-### Feedback & Feature Requests
-
-We’d love to hear from you! 
-If you’re using this SDK in your project, your feedback is incredibly valuable for helping us improve.
-
-- ✅ What’s working well?
-- ⚡ What could be improved?
-- 🌟 Any features you’d like to see in the future?
-
-Please share your thoughts in [Discussions](https://github.com/Soneso/stellar-php-sdk/discussions),  
-or open an issue directly:
-- [🐞 Bug Report](https://github.com/Soneso/stellar-php-sdk/issues/new?template=bug_report.yml)
-- [🌟 Feature Request](https://github.com/Soneso/stellar-php-sdk/issues/new?template=feature_request.yml)
-
-Even a couple of quick notes go a long way — thank you for helping us make the SDK better for the whole Stellar community! 🙏
-
-### Contributing
-
-Contributions are welcome! There are several ways you can help improve this SDK:
-
-- 🐞 [Report bugs](https://github.com/Soneso/stellar-php-sdk/issues/new?template=bug_report.yml)
-- 🌟 [Request features](https://github.com/Soneso/stellar-php-sdk/issues/new?template=feature_request.yml)
-- 💬 Share your ideas in [Discussions](https://github.com/Soneso/stellar-php-sdk/discussions)
-- 🔧 Submit a Pull Request with code improvements
-
-Please check out our [Contributing Guide](./CONTRIBUTING.md) for details. 🙏
+The Stellar SDK for PHP is licensed under the Apache License 2.0. See [LICENSE](LICENSE) for details.
