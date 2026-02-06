@@ -1,6 +1,6 @@
 # SEP-09: Standard KYC Fields
 
-SEP-09 defines a standard vocabulary for KYC (Know Your Customer) and AML (Anti-Money Laundering) data fields. When different services need to exchange customer information—deposits, withdrawals, cross-border payments—they use these field names so everyone speaks the same language.
+SEP-09 defines a standard vocabulary for KYC (Know Your Customer) and AML (Anti-Money Laundering) data fields. When different services need to exchange customer information (deposits, withdrawals, cross-border payments), they use these field names so everyone speaks the same language.
 
 **Use SEP-09 when:**
 - Submitting KYC data via SEP-12
@@ -340,7 +340,7 @@ echo CardKYCFields::HOLDER_NAME_KEY;                      // 'card.holder_name'
 
 ### Integration with SEP-12
 
-These KYC field classes are designed to work seamlessly with the SEP-12 KYC service. Here's how to submit KYC data to an anchor:
+These KYC field classes work directly with the SEP-12 KYC service. Here's how to submit KYC data to an anchor:
 
 ```php
 <?php

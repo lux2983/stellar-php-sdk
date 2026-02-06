@@ -1,6 +1,6 @@
 # SEP-10: Stellar Web Authentication
 
-SEP-10 defines how wallets prove account ownership to anchors and other services. When a service needs to verify you control a Stellar account, SEP-10 handles the challenge-response flow and returns a JWT token for authenticated requests.
+SEP-10 defines how wallets prove account ownership to anchors and other services. When a service needs to verify you control a Stellar account, SEP-10 handles the challenge-response flow and returns a JWT token you can use for authenticated requests.
 
 **Use SEP-10 when:**
 - Authenticating with anchors before deposits/withdrawals (SEP-6, SEP-24)
@@ -36,9 +36,9 @@ echo "Authenticated! Token: " . substr($jwtToken, 0, 50) . "...";
 
 ### Creating WebAuth
 
-#### From Domain (Recommended)
+#### From domain (recommended)
 
-The preferred method loads configuration automatically from the anchor's stellar.toml file, ensuring you always have the correct endpoint and signing key.
+This method loads configuration automatically from the anchor's stellar.toml file, so you always have the correct endpoint and signing key.
 
 ```php
 <?php
@@ -50,9 +50,9 @@ use Soneso\StellarSDK\SEP\WebAuth\WebAuth;
 $webAuth = WebAuth::fromDomain("testanchor.stellar.org", Network::testnet());
 ```
 
-#### Manual Construction
+#### Manual construction
 
-Use manual construction when you already have the endpoint and signing key, or when testing with custom configurations.
+Use this when you already have the endpoint and signing key, or when testing with custom configurations.
 
 ```php
 <?php
@@ -68,9 +68,9 @@ $webAuth = new WebAuth(
 );
 ```
 
-### Standard Authentication
+### Standard authentication
 
-For most use cases, `jwtToken()` handles the entire SEP-10 flow: requesting a challenge, validating it, signing with your keypair(s), and obtaining the JWT token.
+For most use cases, `jwtToken()` handles the entire SEP-10 flow: requesting a challenge, validating it, signing with your keypair(s), and getting the JWT token.
 
 ```php
 <?php
@@ -95,9 +95,9 @@ The method performs these steps internally:
 4. Submits the signed transaction to the server
 5. Returns the JWT token
 
-### Multi-Signature Accounts
+### Multi-signature accounts
 
-For accounts requiring multiple signatures to meet the authentication threshold, provide all required signers. The combined signature weight must satisfy the server's requirements.
+For accounts requiring multiple signatures to meet the authentication threshold, provide all required signers. The combined signature weight must meet the server's requirements.
 
 ```php
 <?php
@@ -118,9 +118,9 @@ $jwtToken = $webAuth->jwtToken(
 );
 ```
 
-### Muxed Accounts
+### Muxed accounts
 
-Muxed accounts (M... addresses) bundle a user ID with a G... account, allowing services to distinguish between multiple users sharing the same Stellar account.
+Muxed accounts (M... addresses) bundle a user ID with a G... account. This lets services distinguish between multiple users sharing the same Stellar account.
 
 ```php
 <?php
@@ -142,7 +142,7 @@ $jwtToken = $webAuth->jwtToken(
 );
 ```
 
-#### Memo-Based User Separation
+#### Memo-based user separation
 
 For services that use memos instead of muxed accounts to identify users sharing a single Stellar account, pass the memo as a separate parameter.
 
@@ -165,11 +165,11 @@ $jwtToken = $webAuth->jwtToken(
 
 > **Note:** You cannot use both a muxed account (M...) and a memo simultaneously. The SDK will throw an `InvalidArgumentException` if you attempt this.
 
-### Client Attribution (Non-Custodial Wallets)
+### Client attribution (non-custodial wallets)
 
-Client domain verification allows wallets to prove their identity to anchors, enabling anchors to provide different experiences for users coming from known, trusted wallets.
+Client domain verification lets wallets prove their identity to anchors. Anchors can then provide different experiences for users coming from known, trusted wallets.
 
-#### Local Signing
+#### Local signing
 
 When the wallet has direct access to its signing key, provide the keypair directly. The wallet's stellar.toml must include a `SIGNING_KEY` that matches the provided keypair.
 
@@ -193,9 +193,9 @@ $jwtToken = $webAuth->jwtToken(
 );
 ```
 
-#### Remote Signing Callback
+#### Remote signing callback
 
-When the client domain signing key is stored on a separate server (recommended for security), use a callback to delegate signing. This is the production-recommended approach.
+When the client domain signing key is stored on a separate server (recommended for security), use a callback to delegate signing. This is the recommended approach for production.
 
 ```php
 <?php
@@ -235,7 +235,7 @@ $jwtToken = $webAuth->jwtToken(
 );
 ```
 
-### Multiple Home Domains
+### Multiple home domains
 
 When an anchor serves multiple domains from the same authentication server, specify which domain the challenge should be issued for.
 
@@ -256,9 +256,9 @@ $jwtToken = $webAuth->jwtToken(
 );
 ```
 
-## Error Handling
+## Error handling
 
-The SDK provides specific exception types for different failure scenarios, allowing precise error handling and appropriate user feedback.
+The SDK provides specific exception types for different failure scenarios. This lets you handle errors precisely and give users appropriate feedback.
 
 ```php
 <?php
@@ -356,7 +356,7 @@ try {
 }
 ```
 
-### Exception Reference
+### Exception reference
 
 | Exception | Cause | Solution |
 |-----------|-------|----------|
@@ -376,7 +376,7 @@ try {
 | `SubmitCompletedChallengeTimeoutResponseException` | Server timeout (504) | Retry with exponential backoff |
 | `SubmitCompletedChallengeUnknownResponseException` | Unexpected HTTP response | Check server logs, contact support |
 
-### Retry Logic Example
+### Retry logic example
 
 For production applications, implement retry logic with exponential backoff for transient failures.
 
@@ -436,7 +436,7 @@ $userKeyPair = KeyPair::fromSeed("SCZANGBA5YHTNYVVV3C7CAZMTQDBJHJG6C34CJDQ66EQ7D
 $jwtToken = authenticateWithRetry($webAuth, $userKeyPair->getAccountId(), [$userKeyPair]);
 ```
 
-## Security Notes
+## Security notes
 
 1. **Sequence number must be 0** - A non-zero sequence number means the transaction could execute on-chain. Never sign challenges with non-zero sequence numbers. The SDK validates this automatically and throws `ChallengeValidationErrorInvalidSeqNr`.
 
@@ -452,11 +452,11 @@ $jwtToken = authenticateWithRetry($webAuth, $userKeyPair->getAccountId(), [$user
 
 7. **Home domain validation** - The challenge's first operation must have the key format `"{domain} auth"`. This prevents domain confusion attacks.
 
-8. **Network passphrase** - Ensure you use the correct network passphrase (testnet vs pubnet). The server may include a `network_passphrase` field in the challenge response (per SEP-10 spec) to help verify network configuration.
+8. **Network passphrase** - Make sure you use the correct network passphrase (testnet vs pubnet). The server may include a `network_passphrase` field in the challenge response (per SEP-10 spec) to help verify network configuration.
 
 ## Testing
 
-The SDK provides mock handler support for testing without making real network requests. This allows you to simulate various server responses in your unit tests.
+The SDK provides mock handler support for testing without making real network requests. You can simulate various server responses in your unit tests.
 
 ```php
 <?php
@@ -496,9 +496,9 @@ $jwtToken = $webAuth->jwtToken($userKeyPair->getAccountId(), [$userKeyPair]);
 
 For complete testing examples including valid challenge transaction construction, refer to the SDK's test suite in `Soneso/StellarSDKTests/Unit/SEP/WebAuth/WebAuthTest.php`.
 
-## JWT Token Structure
+## JWT token structure
 
-The JWT token returned by SEP-10 authentication contains standard claims. While the SDK doesn't provide a built-in JWT decoder, understanding the token structure helps with debugging and validation.
+The JWT token returned by SEP-10 authentication contains standard claims. The SDK doesn't include a JWT decoder, but understanding the token structure helps with debugging and validation.
 
 **Standard JWT claims:**
 - `sub` - The authenticated account (G... or M... address, or G...:memo format for memo-based auth)

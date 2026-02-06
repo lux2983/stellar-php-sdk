@@ -1,8 +1,8 @@
 # SEP-11: Txrep (Transaction Representation)
 
-Txrep is a human-readable text format for Stellar transactions. It converts the binary XDR transaction format into a structured key-value format that's easy to read, edit, and audit. Each line represents a field from the transaction's XDR structure, making it ideal for debugging, documentation, and transaction review.
+Txrep is a human-readable text format for Stellar transactions. It converts the binary XDR transaction format into a structured key-value format that's easy to read, edit, and audit. Each line represents a field from the transaction's XDR structure.
 
-**When to use:** Debugging transactions, displaying transaction details to users for review before signing, creating transaction templates, comparing transactions, or building tools that need to inspect/modify transactions in a readable format.
+**When to use:** Debugging transactions, displaying transaction details to users before signing, creating transaction templates, comparing transactions, or building tools that inspect or modify transactions.
 
 See the [SEP-11 specification](https://github.com/stellar/stellar-protocol/blob/master/ecosystem/sep-0011.md) for full protocol details.
 
@@ -47,7 +47,7 @@ signatures[0].signature: defb4f1fad1c279327b55af184fdcddf73f4f7a8cb40e7e534a71d7
 
 ## Converting XDR to Txrep
 
-### Standard Transaction
+### Standard transaction
 
 Build a transaction programmatically and convert it to Txrep for inspection:
 
@@ -87,7 +87,7 @@ $txRep = TxRep::fromTransactionEnvelopeXdrBase64($transaction->toEnvelopeXdrBase
 echo $txRep;
 ```
 
-### Fee Bump Transaction
+### Fee bump transaction
 
 Fee bump transactions wrap an inner transaction with a new fee. The Txrep output shows the nested structure:
 
@@ -115,7 +115,7 @@ feeBump.tx.innerTx.tx.fee: 100
 
 ## Converting Txrep to XDR
 
-Parse Txrep text back into a binary transaction that can be signed and submitted:
+Parse Txrep text back into a binary transaction you can sign and submit:
 
 ```php
 <?php
@@ -146,9 +146,9 @@ $xdrBase64 = TxRep::transactionEnvelopeXdrBase64FromTxRep($txRep);
 echo $xdrBase64 . PHP_EOL;
 ```
 
-## Txrep Format Reference
+## Txrep format reference
 
-### Envelope Types
+### Envelope types
 
 The `type` field indicates the transaction envelope type:
 
@@ -158,7 +158,7 @@ type: ENVELOPE_TYPE_TX_V0        # Legacy V0 transaction
 type: ENVELOPE_TYPE_TX_FEE_BUMP  # Fee bump transaction
 ```
 
-### Transaction Fields
+### Transaction fields
 
 Core transaction fields (all amounts are in stroops: 1 XLM = 10,000,000 stroops):
 
@@ -170,7 +170,7 @@ tx.seqNum: 123456789             # Sequence number
 
 ### Preconditions
 
-Time-based preconditions restrict when a transaction is valid:
+Preconditions restrict when a transaction is valid:
 
 ```
 # Simple time bounds (PRECOND_TIME)
@@ -197,7 +197,7 @@ tx.cond.v2.extraSigners[0]: G...        # Additional required signer
 tx.cond.type: PRECOND_NONE
 ```
 
-### Memo Types
+### Memo types
 
 Memos attach metadata to transactions:
 
@@ -222,7 +222,7 @@ tx.memo.type: MEMO_RETURN
 tx.memo.retHash: 0102030405060708091011121314151617181920212223242526272829303132
 ```
 
-### Asset Formats
+### Asset formats
 
 Assets are represented in canonical form:
 
@@ -233,7 +233,7 @@ LONGCODE:GISSUER...                 # 12-character code with issuer
 abc123...def456:lp                  # Liquidity pool share (pool ID in hex + ":lp")
 ```
 
-### Common Operation Types
+### Common operation types
 
 Operations are indexed starting at 0:
 
@@ -291,7 +291,7 @@ tx.operations[0].body.type: CLAIM_CLAIMABLE_BALANCE
 tx.operations[0].body.claimClaimableBalanceOp.balanceID.v0: <64 hex chars>
 ```
 
-### Soroban Operations
+### Soroban operations
 
 Smart contract operations have additional fields for resources and authorization:
 
@@ -340,9 +340,9 @@ signatures[1].hint: 1234abcd
 signatures[1].signature: abc...
 ```
 
-## Practical Examples
+## Practical examples
 
-### Inspecting a Transaction Before Signing
+### Inspecting a transaction before signing
 
 Display transaction details to a user for review before they sign:
 
@@ -379,7 +379,7 @@ foreach ($lines as $line) {
 }
 ```
 
-### Round-Trip Conversion
+### Round-trip conversion
 
 Verify that conversions are lossless by converting XDR → Txrep → XDR:
 
@@ -401,7 +401,7 @@ if ($originalXdr === $reconstructedXdr) {
 }
 ```
 
-### Comparing Two Transactions
+### Comparing two transactions
 
 Use Txrep to compare transactions line by line:
 
@@ -430,9 +430,9 @@ foreach ($lines1 as $i => $line1) {
 }
 ```
 
-## Error Handling
+## Error handling
 
-The SDK throws `InvalidArgumentException` for invalid input. Always wrap conversions in try-catch blocks:
+The SDK throws `InvalidArgumentException` for invalid input. Wrap conversions in try-catch blocks:
 
 ```php
 <?php
@@ -483,7 +483,7 @@ signatures.len: 0';
 }
 ```
 
-## Working with Amounts
+## Working with amounts
 
 Txrep displays amounts in stroops (the smallest unit). Use these conversions:
 
@@ -506,7 +506,7 @@ function formatAmount(int $stroops): string {
 echo formatAmount(400004000);  // "40.0004000"
 ```
 
-## Supported Operations
+## Supported operations
 
 The SDK supports all Stellar operation types in Txrep format:
 
@@ -541,7 +541,7 @@ The SDK supports all Stellar operation types in Txrep format:
 
 ## Normalized Txrep
 
-The SEP-11 specification defines a "normalized" form of Txrep with strict ordering and completeness requirements. The SDK's `fromTransactionEnvelopeXdrBase64()` method produces normalized output where:
+The SEP-11 specification defines a "normalized" form of Txrep with strict ordering and completeness requirements. The `fromTransactionEnvelopeXdrBase64()` method produces normalized output where:
 
 - Every field appears exactly once
 - Fields appear in XDR marshaling order
@@ -552,4 +552,4 @@ This makes the output suitable for comparing transactions or generating consiste
 
 ## Related SEPs
 
-- [SEP-07 URI Scheme](sep-07.md) - Uses Txrep concepts in the `replace` parameter for field substitution in transaction URIs
+- [SEP-07](sep-07.md) - Uses Txrep concepts in the `replace` parameter for field substitution in transaction URIs
