@@ -1267,7 +1267,6 @@ if ($contractInfo !== null) {
 - [Soroban Examples](https://github.com/stellar/soroban-examples) — Official example contracts
 - [RPC API Reference](https://developers.stellar.org/docs/data/rpc/api-reference) — Soroban RPC methods
 - [SEP Protocols](sep/README.md) — Stellar Ecosystem Proposals
-- [Advanced Topics](advanced.md) — Multi-signature, fee optimization, and production patterns
 
 ---
 

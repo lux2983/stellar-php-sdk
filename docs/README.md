@@ -15,9 +15,6 @@ Welcome to the documentation for the Stellar SDK for PHP. Whether you're buildin
 ### Protocols & Standards
 - **[SEP Implementations](sep/README.md)** - Stellar Ecosystem Proposal support
 
-### Advanced Topics
-- **[Advanced Guide](advanced.md)** - Multi-sig, fee bumps, optimization, debugging
-
 ## Key Features
 
 The SDK provides a PHP implementation of the Stellar protocol:

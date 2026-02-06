@@ -23,7 +23,7 @@ All documentation is written for **SDK Users** - developers who want to integrat
 Documentation follows a structured learning path from novice to expert:
 
 ```
-Quick Start -> Getting Started -> Core Concepts -> SEP Protocols -> Soroban -> Advanced Topics
+Quick Start -> Getting Started -> Core Concepts -> SEP Protocols -> Soroban
 ```
 
 Each step assumes knowledge from the previous step. Complexity increases naturally.
@@ -340,7 +340,6 @@ docs/
 ├── getting-started.md          # Fundamentals: installation, keys, accounts
 ├── sdk-usage.md                # All SDK features organized by use case
 ├── soroban.md                  # Soroban smart contract development
-├── advanced.md                 # Complex scenarios, optimization, debugging
 ├── sep/
 │   ├── README.md              # SEP overview and selection guide
 │   ├── sep-01-stellar-toml.md # stellar.toml configuration

@@ -2694,7 +2694,6 @@ The [Soroban Guide](soroban.md) covers:
 - [Quick Start Guide](quick-start.md) — First transaction in 15 minutes
 - [Getting Started](getting-started.md) — Installation and fundamentals
 - [Soroban Guide](soroban.md) — Smart contract development
-- [Advanced Topics](advanced.md) — Multi-signature, fee optimization, debugging
 - [SEP Protocols](sep/README.md) — Stellar Ecosystem Proposals
 - [PHPDoc Reference](https://soneso.github.io/stellar-php-sdk/packages/Soneso-StellarSDK.html) — Full API documentation
 
