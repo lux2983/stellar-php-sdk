@@ -12,6 +12,7 @@ This guide covers the fundamentals of the Stellar PHP SDK.
 - [Account Operations](#account-operations)
 - [Transaction Building](#transaction-building)
 - [Connecting to Networks](#connecting-to-networks)
+- [Soroban RPC](#soroban-rpc)
 - [Error Handling](#error-handling)
 - [Best Practices](#best-practices)
 - [Next Steps](#next-steps)
@@ -24,7 +25,7 @@ Install via Composer:
 composer require soneso/stellar-php-sdk
 ```
 
-**Requirements:** PHP 8.0+, ext-sodium, ext-json, ext-curl
+**Requirements:** PHP 8.0+, ext-bcmath, ext-pcntl, ext-gmp
 
 ## Basic Concepts
 
@@ -52,6 +53,10 @@ An account must hold at least 1 XLM to exist (the base reserve).
 
 ### Assets
 
+Stellar supports two types of assets:
+- **Native (XLM):** The built-in currency used for fees and account reserves.
+- **Issued assets:** Tokens created by any account (the "issuer"). To hold an issued asset, you must first establish a trustline to the issuer.
+
 ```php
 <?php
 
@@ -60,7 +65,7 @@ use Soneso\StellarSDK\Asset;
 // Native XLM
 $xlm = Asset::native();
 
-// Issued asset
+// Issued asset (code + issuer account)
 $usdc = Asset::createNonNativeAsset("USDC", "GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN");
 ```
 
@@ -112,7 +117,7 @@ $keyPair = KeyPair::fromAccountId("GCZHXL5HXQX5ABDM26LHYRCQZ5OJFHLOPLZX47WEBP3V2
 
 ### Mnemonic Phrases (SEP-5)
 
-For wallet backup and recovery:
+For wallet backup and recovery. The SDK supports 12, 15, 18, 21, or 24 word phrases:
 
 ```php
 <?php
@@ -120,18 +125,21 @@ For wallet backup and recovery:
 use Soneso\StellarSDK\Crypto\KeyPair;
 use Soneso\StellarSDK\SEP\Derivation\Mnemonic;
 
-// Generate 24-word mnemonic
+// Generate mnemonic (12, 15, or 24 words)
+$mnemonic = Mnemonic::generate12WordsMnemonic();
 $mnemonic = Mnemonic::generate24WordsMnemonic();
-$words = implode(" ", $mnemonic->words);
-// Store these words securely
 
-// Derive accounts from mnemonic
-$keyPair0 = KeyPair::fromMnemonic($mnemonic, 0);
-$keyPair1 = KeyPair::fromMnemonic($mnemonic, 1);
+$words = implode(" ", $mnemonic->words);
+// Store these words securely — they control all derived accounts
+
+// Derive multiple accounts from one mnemonic
+$keyPair0 = KeyPair::fromMnemonic($mnemonic, 0); // First account
+$keyPair1 = KeyPair::fromMnemonic($mnemonic, 1); // Second account
 
 // Restore from existing words
-$mnemonic = Mnemonic::mnemonicFromWords("abandon abandon ... about");
-$keyPair = KeyPair::fromMnemonic($mnemonic, 0, "optional-passphrase");
+$words = "your twelve or twenty four word phrase goes here ...";
+$mnemonic = Mnemonic::mnemonicFromWords($words);
+$keyPair = KeyPair::fromMnemonic($mnemonic, 0);
 ```
 
 ## Account Operations
@@ -161,6 +169,7 @@ use Soneso\StellarSDK\CreateAccountOperationBuilder;
 
 $sdk = StellarSDK::getPublicNetInstance();
 
+// Source account must already exist and have enough XLM for the new account's starting balance + fees
 $sourceKeyPair = KeyPair::fromSeed("SAPS66IJDXUSFDSDKIHR4LN6YPXIGCM5FBZ7GE66FDKFJRYJGFW7ZHYF");
 $newKeyPair = KeyPair::random();
 
@@ -241,22 +250,28 @@ $transaction = (new TransactionBuilder($sourceAccount))
 ```php
 <?php
 
+use Soneso\StellarSDK\TransactionBuilder;
 use Soneso\StellarSDK\PaymentOperationBuilder;
 use Soneso\StellarSDK\ChangeTrustOperationBuilder;
 use Soneso\StellarSDK\Asset;
 
-// Payment
+// Build operations
 $paymentOp = (new PaymentOperationBuilder(
     "GDESTINATION...",
     Asset::native(),
     "100.50"
 ))->build();
 
-// Add trustline
 $trustOp = (new ChangeTrustOperationBuilder(
     Asset::createNonNativeAsset("USD", "GISSUER..."),
     "10000"
 ))->build();
+
+// Add operations to transaction
+$transaction = (new TransactionBuilder($sourceAccount))
+    ->addOperation($trustOp)    // First: establish trustline
+    ->addOperation($paymentOp)  // Then: send payment
+    ->build();
 ```
 
 ### Signing and Submitting
@@ -333,6 +348,62 @@ $sdk = StellarSDK::getPublicNetInstance();
 // Custom Horizon server
 $sdk = new StellarSDK("https://horizon.your-company.com");
 ```
+
+## Soroban RPC
+
+Soroban is Stellar's smart contract platform. To interact with smart contracts, you connect to a Soroban RPC server instead of Horizon.
+
+### Connecting to Soroban RPC
+
+```php
+<?php
+
+use Soneso\StellarSDK\Soroban\SorobanServer;
+
+// Testnet
+$server = new SorobanServer("https://soroban-testnet.stellar.org");
+
+// Mainnet
+$server = new SorobanServer("https://soroban.stellar.org");
+```
+
+### Health Check
+
+```php
+<?php
+
+use Soneso\StellarSDK\Soroban\SorobanServer;
+use Soneso\StellarSDK\Soroban\Responses\GetHealthResponse;
+
+$server = new SorobanServer("https://soroban-testnet.stellar.org");
+
+$health = $server->getHealth();
+
+if ($health->getStatus() === GetHealthResponse::HEALTHY) {
+    echo "Server is healthy\n";
+    echo "Latest ledger: " . $health->getLatestLedger() . "\n";
+    echo "Oldest ledger: " . $health->getOldestLedger() . "\n";
+}
+```
+
+### Latest Ledger Info
+
+```php
+<?php
+
+use Soneso\StellarSDK\Soroban\SorobanServer;
+
+$server = new SorobanServer("https://soroban-testnet.stellar.org");
+
+$ledger = $server->getLatestLedger();
+
+echo "Ledger sequence: " . $ledger->getSequence() . "\n";
+echo "Protocol version: " . $ledger->getProtocolVersion() . "\n";
+```
+
+### Smart Contract Interaction
+
+For deploying contracts, invoking functions, and handling Soroban transactions, see the [Soroban Guide](soroban.md).
 
 ## Error Handling
 
