@@ -2368,6 +2368,8 @@ When transactions fail, Horizon returns detailed error information including res
 
 #### Handling Submission Errors
 
+Catch exceptions and inspect result codes when a transaction fails.
+
 ```php
 <?php
 use Soneso\StellarSDK\StellarSDK;
@@ -2450,6 +2452,8 @@ Sign and verify arbitrary messages with Stellar keypairs following the [SEP-53](
 
 #### Sign a Message
 
+Create a cryptographic signature for any text using your secret key.
+
 ```php
 <?php
 use Soneso\StellarSDK\Crypto\KeyPair;
@@ -2466,6 +2470,8 @@ echo "Signature: " . $signatureBase64 . "\n";
 ```
 
 #### Verify a Message
+
+Confirm a signature matches the message and was created by a specific account.
 
 ```php
 <?php
@@ -2607,6 +2613,8 @@ Soroban is Stellar's smart contract platform. Smart contract transactions differ
 For complete documentation, see the dedicated [Soroban Guide](soroban.md).
 
 ### Quick Example
+
+Deploy a contract and call a method with minimal setup.
 
 ```php
 <?php

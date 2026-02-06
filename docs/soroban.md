@@ -6,6 +6,8 @@ Deploy and interact with Soroban smart contracts using the Stellar PHP SDK.
 
 ## Quick Start
 
+Install WASM, deploy a contract, and call a method in one go.
+
 ```php
 <?php
 
