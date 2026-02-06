@@ -35,13 +35,14 @@ Think of SEPs as the "rules of the road" that let different Stellar applications
 
 ### Building a Wallet
 
-Start with authentication, then add deposit/withdrawal support:
+Start by discovering anchor services, then authenticate and add deposit/withdrawal support:
 
-1. **SEP-10** — Authenticate users with anchors (or **SEP-45** for contract accounts)
-2. **SEP-12** — Submit KYC information required by anchors
-3. **SEP-24** — Interactive deposit/withdrawal (recommended for most wallets)
-4. **SEP-06** — Programmatic deposit/withdrawal (for automated flows)
-5. **SEP-38** — Get exchange rate quotes (used with SEP-06 and SEP-24)
+1. **SEP-01** — Discover anchor endpoints via stellar.toml
+2. **SEP-10** — Authenticate users with anchors (or **SEP-45** for contract accounts)
+3. **SEP-12** — Submit KYC information required by anchors
+4. **SEP-24** — Interactive deposit/withdrawal (recommended for most wallets)
+5. **SEP-06** — Programmatic deposit/withdrawal (for automated flows)
+6. **SEP-38** — Get exchange rate quotes (used with SEP-06 and SEP-24)
 
 SEP-24 shows the user a web interface hosted by the anchor. SEP-06 handles everything via API calls. Most wallets use SEP-24 because it offloads UI complexity to the anchor. When exchanging between different assets (e.g., USD to USDC), SEP-38 provides rate quotes before the transaction.
 
