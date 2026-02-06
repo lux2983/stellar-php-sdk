@@ -179,10 +179,10 @@ use Soneso\StellarSDK\CreateAccountOperationBuilder;
 
 $sdk = StellarSDK::getPublicNetInstance();
 
-// Source account must already exist and have enough XLM for the new account's starting balance + fees
 $sourceKeyPair = KeyPair::fromSeed("SAPS66IJDXUSFDSDKIHR4LN6YPXIGCM5FBZ7GE66FDKFJRYJGFW7ZHYF");
 $newKeyPair = KeyPair::random();
 
+// Source account must already exist and have enough XLM for the new account's starting balance + fees
 $sourceAccount = $sdk->requestAccount($sourceKeyPair->getAccountId());
 
 $createOp = (new CreateAccountOperationBuilder(
@@ -263,7 +263,7 @@ $transaction = (new TransactionBuilder($sourceAccount))
     ->build();
 ```
 
-### Adding Operations
+### Building Operations
 
 Each operation type has its own builder class. Build the operations first, then add them to the transaction. Operations execute in order.
 
@@ -295,6 +295,8 @@ $transaction = (new TransactionBuilder($sourceAccount))
 ```
 
 ### Signing and Submitting
+
+Transactions need a valid signature before the network accepts them. The signature proves the source account authorized the transaction. Use the correct network passphrase when signing—testnet and public have different passphrases, and a mismatch causes the transaction to fail.
 
 ```php
 <?php

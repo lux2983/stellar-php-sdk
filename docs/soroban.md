@@ -43,45 +43,169 @@ echo $result->vec[0]->sym . ', ' . $result->vec[1]->sym; // Hello, World
 
 ## SorobanServer
 
-Direct communication with Soroban RPC nodes.
+Direct communication with Soroban RPC nodes for low-level operations.
+
+### Connecting to RPC
 
 ```php
 <?php
+use Soneso\StellarSDK\Soroban\SorobanServer;
 
+$server = new SorobanServer('https://soroban-testnet.stellar.org');
+$server->enableLogging = true; // Enable debug logging
+```
+
+### Health Check
+
+Verify the RPC node is operational before making requests.
+
+```php
+<?php
+use Soneso\StellarSDK\Soroban\SorobanServer;
 use Soneso\StellarSDK\Soroban\Responses\GetHealthResponse;
+
+$server = new SorobanServer('https://soroban-testnet.stellar.org');
+
+$health = $server->getHealth();
+if ($health->status === GetHealthResponse::HEALTHY) {
+    echo "Node healthy\n";
+}
+```
+
+### Network Information
+
+Get network passphrase and protocol version.
+
+```php
+<?php
+use Soneso\StellarSDK\Soroban\SorobanServer;
+
+$server = new SorobanServer('https://soroban-testnet.stellar.org');
+
+$network = $server->getNetwork();
+echo "Passphrase: {$network->passphrase}\n";
+echo "Protocol version: {$network->protocolVersion}\n";
+```
+
+### Latest Ledger
+
+Get the current ledger sequence for transaction timing.
+
+```php
+<?php
+use Soneso\StellarSDK\Soroban\SorobanServer;
+
+$server = new SorobanServer('https://soroban-testnet.stellar.org');
+
+$ledger = $server->getLatestLedger();
+echo "Sequence: {$ledger->sequence}\n";
+```
+
+### Account Data
+
+Load account information (needed for transaction building).
+
+```php
+<?php
+use Soneso\StellarSDK\Soroban\SorobanServer;
+
+$server = new SorobanServer('https://soroban-testnet.stellar.org');
+
+$account = $server->getAccount('GABC...');
+echo "Sequence: {$account->getSequenceNumber()}\n";
+```
+
+### Contract Data
+
+Read persistent or temporary data stored by a contract.
+
+```php
+<?php
 use Soneso\StellarSDK\Soroban\SorobanServer;
 use Soneso\StellarSDK\Xdr\XdrContractDataDurability;
 use Soneso\StellarSDK\Xdr\XdrSCVal;
 
 $server = new SorobanServer('https://soroban-testnet.stellar.org');
-$server->enableLogging = true; // Debug mode
 
-// Health check
-if ($server->getHealth()->status === GetHealthResponse::HEALTHY) {
-    echo "Node healthy\n";
-}
-
-// Network info
-$network = $server->getNetwork();
-echo "Passphrase: {$network->passphrase}\n";
-
-// Latest ledger
-$ledger = $server->getLatestLedger();
-echo "Sequence: {$ledger->sequence}\n";
-
-// Account data
-$account = $server->getAccount('GABC...');
-echo "Sequence: {$account->getSequenceNumber()}\n";
-
-// Contract data
 $entry = $server->getContractData(
     contractId: 'CCXYZ...',
     key: XdrSCVal::forSymbol('counter'),
     durability: XdrContractDataDurability::PERSISTENT()
 );
 
-// Contract info (spec entries, metadata)
+if ($entry !== null) {
+    echo "Value: " . $entry->val->u32 . "\n";
+}
+```
+
+### Contract Info
+
+Load contract specification and metadata.
+
+```php
+<?php
+use Soneso\StellarSDK\Soroban\SorobanServer;
+
+$server = new SorobanServer('https://soroban-testnet.stellar.org');
+
+// By contract ID
 $info = $server->loadContractInfoForContractId('CCXYZ...');
+if ($info !== null) {
+    echo "Spec entries: " . count($info->specEntries) . "\n";
+}
+
+// By WASM ID (hash of uploaded code)
+$info = $server->loadContractInfoForWasmId($wasmId);
+```
+
+### Get Ledger Entries
+
+Directly inspect ledger state including contract code and data.
+
+```php
+<?php
+use Soneso\StellarSDK\Soroban\SorobanServer;
+use Soneso\StellarSDK\Xdr\XdrContractEntryBodyType;
+use Soneso\StellarSDK\Xdr\XdrLedgerEntryType;
+use Soneso\StellarSDK\Xdr\XdrLedgerKey;
+use Soneso\StellarSDK\Xdr\XdrLedgerKeyContractCode;
+
+$server = new SorobanServer('https://soroban-testnet.stellar.org');
+
+// Build ledger key for contract code
+$ledgerKey = new XdrLedgerKey(XdrLedgerEntryType::CONTRACT_CODE());
+$ledgerKey->contractCode = new XdrLedgerKeyContractCode(
+    hex2bin($wasmId),
+    XdrContractEntryBodyType::DATA_ENTRY()
+);
+
+// Request ledger entries
+$response = $server->getLedgerEntries([$ledgerKey->toBase64Xdr()]);
+
+foreach ($response->entries as $entry) {
+    echo "Ledger: " . $entry->lastModifiedLedger . "\n";
+}
+```
+
+### Load Contract Code
+
+Helper methods to load contract bytecode from the network.
+
+```php
+<?php
+use Soneso\StellarSDK\Soroban\SorobanServer;
+
+$server = new SorobanServer('https://soroban-testnet.stellar.org');
+
+// By contract ID
+$contractCodeEntry = $server->loadContractCodeForContractId('CCXYZ...');
+if ($contractCodeEntry !== null) {
+    $bytecode = $contractCodeEntry->body->code->value;
+    echo "Code size: " . strlen($bytecode) . " bytes\n";
+}
+
+// By WASM ID
+$contractCodeEntry = $server->loadContractCodeForWasmId($wasmId);
 ```
 
 ## SorobanClient
@@ -207,18 +331,18 @@ $client = SorobanClient::deploy(new DeployRequest(
 
 ## AssembledTransaction
 
-Fine-grained control over transaction lifecycle.
+Fine-grained control over the transaction lifecycle. Use `buildInvokeMethodTx()` instead of `invokeMethod()` when you need to inspect simulation results, add memos, or handle multi-signature workflows.
+
+### Building Without Submitting
+
+Build a transaction to inspect it before submission.
 
 ```php
 <?php
-
 use Soneso\StellarSDK\Crypto\KeyPair;
-use Soneso\StellarSDK\Memo;
 use Soneso\StellarSDK\Network;
 use Soneso\StellarSDK\Soroban\Contract\ClientOptions;
-use Soneso\StellarSDK\Soroban\Contract\MethodOptions;
 use Soneso\StellarSDK\Soroban\Contract\SorobanClient;
-use Soneso\StellarSDK\Soroban\Responses\GetTransactionResponse;
 use Soneso\StellarSDK\Xdr\XdrSCVal;
 
 $client = SorobanClient::forClientOptions(new ClientOptions(
@@ -230,43 +354,75 @@ $client = SorobanClient::forClientOptions(new ClientOptions(
 
 // Build without submitting
 $tx = $client->buildInvokeMethodTx('transfer', [XdrSCVal::forSymbol('test')]);
+```
 
-// Access simulation
+### Accessing Simulation Results
+
+Get simulation data including return values and resource estimates.
+
+```php
+<?php
+// Access simulation results
 $simData = $tx->getSimulationData();
 $returnValue = $simData->returnedValue;
+$minResourceFee = $tx->simulationResponse->minResourceFee;
+```
 
-// Check if read-only
+### Read-Only vs Write Calls
+
+Check if a call is read-only (simulation only) or requires submission.
+
+```php
+<?php
 if ($tx->isReadCall()) {
-    $result = $simData->returnedValue;
+    // Read-only: result available from simulation
+    $result = $tx->getSimulationData()->returnedValue;
 } else {
+    // Write: must sign and submit
     $response = $tx->signAndSend();
     $result = $response->getResultValue();
 }
+```
 
-// Modify before simulation
+### Modifying Before Submission
+
+Skip automatic simulation to modify the transaction (e.g., add memo) before simulating.
+
+```php
+<?php
+use Soneso\StellarSDK\Memo;
+use Soneso\StellarSDK\Soroban\Contract\MethodOptions;
+
+// Build without auto-simulation
 $tx = $client->buildInvokeMethodTx(
     'my_method', 
     [], 
     methodOptions: new MethodOptions(simulate: false)
 );
+
+// Modify the raw transaction
 $tx->raw->addMemo(Memo::text('My memo'));
+
+// Now simulate and submit
 $tx->simulate();
 $response = $tx->signAndSend();
 ```
 
 ## Authorization
 
-Handle multi-party signing for operations like swaps and transfers.
+Handle multi-party signing for operations like swaps, escrow, and transfers that require consent from multiple accounts.
+
+### Check Who Needs to Sign
+
+Before submission, check which accounts need to authorize the transaction.
 
 ```php
 <?php
-
 use Soneso\StellarSDK\Crypto\KeyPair;
 use Soneso\StellarSDK\Network;
 use Soneso\StellarSDK\Soroban\Address;
 use Soneso\StellarSDK\Soroban\Contract\ClientOptions;
 use Soneso\StellarSDK\Soroban\Contract\SorobanClient;
-use Soneso\StellarSDK\Soroban\SorobanAuthorizationEntry;
 use Soneso\StellarSDK\Xdr\XdrSCVal;
 
 $alice = KeyPair::fromSeed('SALICE...');
@@ -286,70 +442,134 @@ $tx = $client->buildInvokeMethodTx('swap', [
     XdrSCVal::forI128BigInt(500)
 ]);
 
-// Check who needs to sign
+// Check who needs to sign (returns array of account IDs)
 $neededSigners = $tx->needsNonInvokerSigningBy();
+// e.g., ['GBOB...'] - Bob needs to authorize
+```
 
-// Sign Bob's auth entries (same machine)
+### Local Signing
+
+Sign auth entries when you have the private key locally.
+
+```php
+<?php
+// Sign Bob's auth entries (Bob's keypair available locally)
 $tx->signAuthEntries(signerKeyPair: $bob);
 
-// Remote signing (Bob's key on another server)
+// Submit (Alice signs the transaction envelope)
+$response = $tx->signAndSend();
+```
+
+### Remote Signing
+
+Sign auth entries when the private key is on another server (e.g., custody service).
+
+```php
+<?php
+use Soneso\StellarSDK\Crypto\KeyPair;
+use Soneso\StellarSDK\Network;
+use Soneso\StellarSDK\Soroban\SorobanAuthorizationEntry;
+
+// Only have Bob's public key locally
 $bobPublicKey = KeyPair::fromAccountId('GBOB...');
+
 $tx->signAuthEntries(
     signerKeyPair: $bobPublicKey,
     authorizeEntryCallback: function (
         SorobanAuthorizationEntry $entry,
         Network $network
     ): SorobanAuthorizationEntry {
+        // Send to remote server for signing
         $base64Entry = $entry->toBase64Xdr();
         $signedBase64 = sendToRemoteServer($base64Entry); // Your implementation
         return SorobanAuthorizationEntry::fromBase64Xdr($signedBase64);
     }
 );
 
-// Submit (Alice signs envelope)
+// Submit after all auth entries are signed
 $response = $tx->signAndSend();
 ```
 
 ## Type Conversions
 
+Convert between PHP native types and Soroban XDR values.
+
 ### Creating XdrSCVal
+
+Create XDR values manually for contract arguments.
+
+#### Primitives
 
 ```php
 <?php
-
-use Soneso\StellarSDK\Soroban\Address;
-use Soneso\StellarSDK\Xdr\XdrInt128Parts;
-use Soneso\StellarSDK\Xdr\XdrSCMapEntry;
 use Soneso\StellarSDK\Xdr\XdrSCVal;
 
-// Primitives
 $bool = XdrSCVal::forBool(true);
 $u32 = XdrSCVal::forU32(42);
+$i32 = XdrSCVal::forI32(-42);
+$u64 = XdrSCVal::forU64(1000000);
 $i64 = XdrSCVal::forI64(-1000000);
 $string = XdrSCVal::forString('Hello');
 $symbol = XdrSCVal::forSymbol('transfer');
 $bytes = XdrSCVal::forBytes(hex2bin('deadbeef'));
 $void = XdrSCVal::forVoid();
+```
 
-// BigInt (128/256-bit)
+#### Big Integers (128/256-bit)
+
+Handle integers that exceed PHP's native range using strings or GMP.
+
+```php
+<?php
+use Soneso\StellarSDK\Xdr\XdrInt128Parts;
+use Soneso\StellarSDK\Xdr\XdrSCVal;
+
+// From string (recommended for large values)
 $u128 = XdrSCVal::forU128BigInt('340282366920938463463374607431768211455');
-$i128 = XdrSCVal::forI128BigInt(-1000);
-$u256 = XdrSCVal::forU256BigInt(gmp_pow(2, 200));
+$i128 = XdrSCVal::forI128BigInt('-170141183460469231731687303715884105728');
 
-// Legacy 128-bit
+// From GMP for calculations
+$u256 = XdrSCVal::forU256BigInt(gmp_pow(2, 200));
+$i256 = XdrSCVal::forI256BigInt(gmp_neg(gmp_pow(2, 200)));
+
+// Small integers work directly
+$i128 = XdrSCVal::forI128BigInt(42);
+
+// Legacy method (still supported)
 $i128Legacy = XdrSCVal::forI128(new XdrInt128Parts(hi: 0, lo: 1000));
 
-// Addresses
-$account = Address::fromAccountId('GABC...')->toXdrSCVal();
-$contract = Address::fromContractId('CABC...')->toXdrSCVal();
+// Converting back to BigInt
+$bigInt = $u128->toBigInt();  // Returns GMP resource
+echo gmp_strval($bigInt);
+```
 
-// Vector
+#### Addresses
+
+```php
+<?php
+use Soneso\StellarSDK\Soroban\Address;
+
+// Account address (G...)
+$account = Address::fromAccountId('GABC...')->toXdrSCVal();
+
+// Contract address (C...)
+$contract = Address::fromContractId('CABC...')->toXdrSCVal();
+```
+
+#### Collections
+
+```php
+<?php
+use Soneso\StellarSDK\Xdr\XdrSCMapEntry;
+use Soneso\StellarSDK\Xdr\XdrSCVal;
+
+// Vector (array)
 $vec = XdrSCVal::forVec([
     XdrSCVal::forSymbol('a'),
     XdrSCVal::forSymbol('b')
 ]);
 
-// Map
+// Map (key-value pairs)
 $map = XdrSCVal::forMap([
     new XdrSCMapEntry(XdrSCVal::forSymbol('name'), XdrSCVal::forString('Alice')),
     new XdrSCMapEntry(XdrSCVal::forSymbol('age'), XdrSCVal::forU32(30))
@@ -358,60 +578,229 @@ $map = XdrSCVal::forMap([
 
 ### Using ContractSpec
 
-Auto-convert native PHP values based on contract types:
+Auto-convert native PHP values based on contract specification. The spec is loaded from the contract and knows the expected types.
 
 ```php
 <?php
-
-use Soneso\StellarSDK\Soroban\Contract\ContractSpec;
-
 $spec = $client->getContractSpec();
 
-// Convert function arguments
+// Convert function arguments (uses spec to determine types)
 $args = $spec->funcArgsToXdrSCValues('swap', [
-    'a' => 'GALICE...',     // Auto-converts to Address
+    'a' => 'GALICE...',      // Auto-converts to Address
     'b' => 'GBOB...',
     'token_a' => 'CTOKEN1...',
     'token_b' => 'CTOKEN2...',
-    'amount_a' => 1000,      // Auto-converts to i128
+    'amount_a' => 1000,       // Auto-converts to i128
     'min_b_for_a' => 950,
     'amount_b' => 500,
     'min_a_for_b' => 450
 ]);
 
-// Find functions and types
+// Explore contract functions
 $functions = $spec->funcs();
 $swapFunc = $spec->getFunc('swap');
+
+// Find custom types
 $myUnion = $spec->findEntry('myUnion');
+```
+
+### Advanced Type Conversions
+
+For low-level control, use `nativeToXdrSCVal()` with explicit type definitions.
+
+#### Void and Option (Nullable)
+
+```php
+<?php
+use Soneso\StellarSDK\Xdr\XdrSCSpecTypeDef;
+use Soneso\StellarSDK\Xdr\XdrSCSpecTypeOption;
+
+// Void
+$def = XdrSCSpecTypeDef::VOID();
+$val = $spec->nativeToXdrSCVal(null, $def);
+
+// Option (nullable) - returns string or void
+$def = XdrSCSpecTypeDef::forOption(
+    new XdrSCSpecTypeOption(valueType: XdrSCSpecTypeDef::STRING())
+);
+$val = $spec->nativeToXdrSCVal("a string", $def);  // String value
+$val = $spec->nativeToXdrSCVal(null, $def);        // Void (none)
+```
+
+#### Vectors with Element Type
+
+```php
+<?php
+use Soneso\StellarSDK\Xdr\XdrSCSpecTypeDef;
+use Soneso\StellarSDK\Xdr\XdrSCSpecTypeVec;
+
+$def = XdrSCSpecTypeDef::forVec(
+    new XdrSCSpecTypeVec(elementType: XdrSCSpecTypeDef::SYMBOL())
+);
+$val = $spec->nativeToXdrSCVal(["a", "b", "c"], $def);
+```
+
+#### Maps with Key/Value Types
+
+```php
+<?php
+use Soneso\StellarSDK\Xdr\XdrSCSpecTypeDef;
+use Soneso\StellarSDK\Xdr\XdrSCSpecTypeMap;
+
+$mapType = new XdrSCSpecTypeMap(
+    keyType: XdrSCSpecTypeDef::STRING(),
+    valueType: XdrSCSpecTypeDef::ADDRESS()
+);
+$def = XdrSCSpecTypeDef::forMap($mapType);
+$val = $spec->nativeToXdrSCVal([
+    "alice" => "GALICE...",
+    "bob" => "GBOB..."
+], $def);
+```
+
+> ⚠️ **PHP Limitation**: PHP only accepts `int` or `string` as array keys. If a map key must be a type that cannot be constructed from int/string (e.g., bool, vec, another map), you must construct the `XdrSCVal` manually.
+
+#### Tuples
+
+```php
+<?php
+use Soneso\StellarSDK\Xdr\XdrSCSpecTypeDef;
+use Soneso\StellarSDK\Xdr\XdrSCSpecTypeTuple;
+
+$tuple = new XdrSCSpecTypeTuple(valueTypes: [
+    XdrSCSpecTypeDef::STRING(),
+    XdrSCSpecTypeDef::BOOL(),
+    XdrSCSpecTypeDef::U32()
+]);
+$def = XdrSCSpecTypeDef::forTuple($tuple);
+$val = $spec->nativeToXdrSCVal(["hello", true, 42], $def);
+```
+
+#### Bytes and BytesN
+
+```php
+<?php
+use Soneso\StellarSDK\Xdr\XdrSCSpecTypeDef;
+use Soneso\StellarSDK\Xdr\XdrSCSpecTypeBytesN;
+
+// Variable-length bytes
+$def = XdrSCSpecTypeDef::BYTES();
+$val = $spec->nativeToXdrSCVal($keyPair->getPublicKey(), $def);
+
+// Fixed-length bytes (e.g., 32 bytes for a hash)
+$def = XdrSCSpecTypeDef::forBytesN(new XdrSCSpecTypeBytesN(n: 32));
+$val = $spec->nativeToXdrSCVal($keyPair->getPublicKey(), $def);
+```
+
+#### User-Defined Types (Enum, Struct, Union)
+
+**Enum** — pass the integer value:
+
+```php
+<?php
+use Soneso\StellarSDK\Xdr\XdrSCSpecTypeDef;
+use Soneso\StellarSDK\Xdr\XdrSCSpecTypeUDT;
+
+$def = XdrSCSpecTypeDef::forUDT(new XdrSCSpecTypeUDT(name: "MyEnum"));
+$val = $spec->nativeToXdrSCVal(2, $def);  // Enum case with value 2
+```
+
+**Struct** — pass an associative array:
+
+```php
+<?php
+use Soneso\StellarSDK\Xdr\XdrSCSpecTypeDef;
+use Soneso\StellarSDK\Xdr\XdrSCSpecTypeUDT;
+
+$def = XdrSCSpecTypeDef::forUDT(new XdrSCSpecTypeUDT(name: "MyStruct"));
+$val = $spec->nativeToXdrSCVal([
+    "field1" => 100,
+    "field2" => "hello",
+    "field3" => true
+], $def);
+```
+
+> **Note**: If all struct field names are numeric strings, pass a sequential array instead — the result will be `SCV_VEC` rather than `SCV_MAP`.
+
+**Union** — use `NativeUnionVal`:
+
+```php
+<?php
+use Soneso\StellarSDK\Soroban\Contract\NativeUnionVal;
+use Soneso\StellarSDK\Xdr\XdrSCSpecTypeDef;
+use Soneso\StellarSDK\Xdr\XdrSCSpecTypeUDT;
+
+$def = XdrSCSpecTypeDef::forUDT(new XdrSCSpecTypeUDT(name: "MyUnion"));
+
+// Void case (no values)
+$val = $spec->nativeToXdrSCVal(new NativeUnionVal("voidCase"), $def);
+
+// Tuple case (with values)
+$val = $spec->nativeToXdrSCVal(
+    new NativeUnionVal("tupleCase", values: ["hello", 42]),
+    $def
+);
 ```
 
 ### Reading Return Values
 
+Access return values by their XDR type.
+
 ```php
 <?php
-
 $result = $client->invokeMethod('get_data', []);
 
-// By type
+// Access by type property
 $count = $result->u32;
 $name = $result->str;
 $flag = $result->b;
 
-// BigInt
+// BigInt conversion
 $bigValue = $result->toBigInt();
 echo gmp_strval($bigValue);
 
-// Vector elements
+// Iterate vector elements
 foreach ($result->vec as $item) {
     echo $item->sym . "\n";
+}
+
+// Access map entries
+foreach ($result->map as $entry) {
+    echo $entry->key->sym . ": " . $entry->val->str . "\n";
 }
 ```
 
 ## Events
 
+Query contract events emitted during execution. Useful for tracking transfers, state changes, and other contract activity.
+
+### Basic Event Query
+
+Query events starting from a specific ledger.
+
 ```php
 <?php
+use Soneso\StellarSDK\Soroban\Requests\GetEventsRequest;
+use Soneso\StellarSDK\Soroban\SorobanServer;
 
+$server = new SorobanServer('https://soroban-testnet.stellar.org');
+
+// Get events starting from ledger 12345
+$response = $server->getEvents(new GetEventsRequest(startLedger: 12345));
+
+foreach ($response->events as $event) {
+    echo "Ledger: {$event->ledger}\n";
+    echo "Contract: {$event->contractId}\n";
+    echo "Topics: " . json_encode($event->topic) . "\n";
+}
+```
+
+### Filtering by Contract and Topic
+
+Filter events by contract ID and topic values.
+
+```php
+<?php
 use Soneso\StellarSDK\Crypto\StrKey;
 use Soneso\StellarSDK\Soroban\Requests\EventFilter;
 use Soneso\StellarSDK\Soroban\Requests\EventFilters;
@@ -423,11 +812,12 @@ use Soneso\StellarSDK\Xdr\XdrSCVal;
 
 $server = new SorobanServer('https://soroban-testnet.stellar.org');
 
-// Contract ID must be C-prefixed
-$contractId = StrKey::encodeContractIdHex($hexContractId);
+// Contract ID must be C-prefixed strkey
+$contractId = 'CCXYZ...';
 
+// Filter: any first topic, "transfer" as second topic
 $topicFilter = new TopicFilter([
-    '*',
+    '*',  // Wildcard for first topic
     XdrSCVal::forSymbol('transfer')->toBase64Xdr()
 ]);
 
@@ -440,7 +830,10 @@ $eventFilter = new EventFilter(
 $filters = new EventFilters();
 $filters->add($eventFilter);
 
-$response = $server->getEvents(new GetEventsRequest(12345, $filters));
+$response = $server->getEvents(new GetEventsRequest(
+    startLedger: 12345,
+    filters: $filters
+));
 
 foreach ($response->events as $event) {
     echo "Ledger: {$event->ledger}, Value: {$event->value}\n";
@@ -449,47 +842,85 @@ foreach ($response->events as $event) {
 
 ## Error Handling
 
+Handle errors at different stages: client creation, simulation, and transaction submission.
+
+### Debug Logging
+
+Enable logging to diagnose issues.
+
 ```php
 <?php
-
 use Soneso\StellarSDK\Crypto\KeyPair;
 use Soneso\StellarSDK\Network;
 use Soneso\StellarSDK\Soroban\Contract\ClientOptions;
-use Soneso\StellarSDK\Soroban\Contract\MethodOptions;
 use Soneso\StellarSDK\Soroban\Contract\SorobanClient;
-use Soneso\StellarSDK\Soroban\Responses\GetTransactionResponse;
 
 $client = SorobanClient::forClientOptions(new ClientOptions(
     sourceAccountKeyPair: KeyPair::fromSeed('SXXX...'),
     contractId: 'CCXYZ...',
     network: Network::testnet(),
     rpcUrl: 'https://soroban-testnet.stellar.org',
-    enableServerLogging: true // Debug
+    enableServerLogging: true  // Enable RPC logging
 ));
+```
 
+### Method Not Found
+
+Handle invalid method names or arguments.
+
+```php
+<?php
 try {
     $tx = $client->buildInvokeMethodTx('nonexistent', []);
 } catch (\Exception $e) {
     echo "Error: {$e->getMessage()}\n";
 }
+```
 
-// Simulation errors
+### Simulation Errors
+
+Check simulation response for errors before submission.
+
+```php
+<?php
 $tx = $client->buildInvokeMethodTx('my_method', []);
+
 if ($tx->simulationResponse->error !== null) {
     echo "Simulation failed: {$tx->simulationResponse->error}\n";
+    // Don't submit - fix the issue first
 }
+```
 
-// Transaction failures
+### Transaction Failures
+
+Handle failures after submission.
+
+```php
+<?php
+use Soneso\StellarSDK\Soroban\Responses\GetTransactionResponse;
+
 try {
     $response = $tx->signAndSend();
+    
     if ($response->status === GetTransactionResponse::STATUS_FAILED) {
-        echo "Failed: {$response->resultXdr}\n";
+        echo "Transaction failed: {$response->resultXdr}\n";
+    } elseif ($response->status === GetTransactionResponse::STATUS_SUCCESS) {
+        echo "Success!\n";
     }
 } catch (\Exception $e) {
     echo "Submission error: {$e->getMessage()}\n";
 }
+```
 
-// Auto-restore expired state
+### Auto-Restore Expired State
+
+Automatically restore expired contract state before invocation.
+
+```php
+<?php
+use Soneso\StellarSDK\Soroban\Contract\MethodOptions;
+
+// If contract state has expired, restore it automatically
 $result = $client->invokeMethod(
     'my_method',
     [],
@@ -499,7 +930,11 @@ $result = $client->invokeMethod(
 
 ## Contract Bindings
 
-Generate type-safe PHP classes using [stellar-contract-bindings](https://github.com/lightsail-network/stellar-contract-bindings):
+Generate type-safe PHP classes from contract specifications. This provides IDE autocompletion and compile-time type checking.
+
+### Generate Bindings
+
+Use [stellar-contract-bindings](https://github.com/lightsail-network/stellar-contract-bindings) to generate PHP classes:
 
 ```bash
 pip install stellar-contract-bindings
@@ -514,9 +949,12 @@ stellar-contract-bindings php \
 
 Or use the [web interface](https://stellar-contract-bindings.fly.dev/).
 
+### Use Generated Client
+
+The generated client provides type-safe method calls with native PHP types.
+
 ```php
 <?php
-
 use Soneso\StellarSDK\Crypto\KeyPair;
 use Soneso\StellarSDK\Network;
 use Soneso\StellarSDK\Soroban\Contract\ClientOptions;
@@ -529,38 +967,39 @@ $client = TokenClient::forClientOptions(new ClientOptions(
     rpcUrl: 'https://soroban-testnet.stellar.org'
 ));
 
-// Type-safe calls
-$balance = $client->balance('GABC...');
-$client->transfer('GFROM...', 'GTO...', 1000);
+// Type-safe calls with native PHP types
+$balance = $client->balance('GABC...');  // Returns BigInteger
+$client->transfer('GFROM...', 'GTO...', 1000);  // Amount as int
 ```
 
-## Low-Level Deployment
+## Low-Level Operations
 
-For SAC or custom workflows:
+Manual operations for custom workflows requiring full control over the transaction process.
+
+### Upload WASM
+
+Upload contract bytecode to the network. Returns a WASM hash for deployment.
 
 ```php
 <?php
-
-use Soneso\StellarSDK\Asset;
-use Soneso\StellarSDK\CreateContractHostFunction;
 use Soneso\StellarSDK\Crypto\KeyPair;
-use Soneso\StellarSDK\DeploySACWithAssetHostFunction;
 use Soneso\StellarSDK\InvokeHostFunctionOperationBuilder;
 use Soneso\StellarSDK\Network;
-use Soneso\StellarSDK\Soroban\Address;
 use Soneso\StellarSDK\Soroban\Requests\SimulateTransactionRequest;
 use Soneso\StellarSDK\Soroban\SorobanServer;
+use Soneso\StellarSDK\Soroban\Responses\GetTransactionResponse;
 use Soneso\StellarSDK\TransactionBuilder;
 use Soneso\StellarSDK\UploadContractWasmHostFunction;
 
 $keyPair = KeyPair::fromSeed('SXXX...');
 $server = new SorobanServer('https://soroban-testnet.stellar.org');
 
-// Upload WASM
+// Build upload operation
 $uploadOp = (new InvokeHostFunctionOperationBuilder(
     new UploadContractWasmHostFunction(file_get_contents('contract.wasm'))
 ))->build();
 
+// Build and simulate transaction
 $account = $server->getAccount($keyPair->getAccountId());
 $tx = (new TransactionBuilder($account))->addOperation($uploadOp)->build();
 
@@ -569,32 +1008,235 @@ $tx->setSorobanTransactionData($sim->transactionData);
 $tx->addResourceFee($sim->minResourceFee);
 $tx->sign($keyPair, Network::testnet());
 
-$server->sendTransaction($tx);
-// Poll getTransaction until STATUS_SUCCESS, then get $wasmHash
+// Submit
+$sendResponse = $server->sendTransaction($tx);
 
-// Create instance
+// Poll for result
+$txResponse = $server->getTransaction($sendResponse->hash);
+if ($txResponse->status === GetTransactionResponse::STATUS_SUCCESS) {
+    $wasmHash = $txResponse->getWasmId();
+}
+```
+
+### Create Contract Instance
+
+Deploy a contract instance from an uploaded WASM hash.
+
+```php
+<?php
+use Soneso\StellarSDK\CreateContractHostFunction;
+use Soneso\StellarSDK\InvokeHostFunctionOperationBuilder;
+use Soneso\StellarSDK\Soroban\Address;
+
 $createOp = (new InvokeHostFunctionOperationBuilder(
     new CreateContractHostFunction(
         Address::fromAccountId($keyPair->getAccountId()),
         $wasmHash
     )
 ))->build();
-// ... simulate, sign, send
 
-// Stellar Asset Contract
+// Build, simulate, set auth, sign, and send
+$tx = (new TransactionBuilder($account))->addOperation($createOp)->build();
+$sim = $server->simulateTransaction(new SimulateTransactionRequest($tx));
+
+$tx->setSorobanTransactionData($sim->transactionData);
+$tx->setSorobanAuth($sim->getSorobanAuth());
+$tx->addResourceFee($sim->minResourceFee);
+$tx->sign($keyPair, Network::testnet());
+
+$sendResponse = $server->sendTransaction($tx);
+```
+
+### Create Contract with Constructor (Protocol 22+)
+
+Deploy contracts that have constructors.
+
+```php
+<?php
+use Soneso\StellarSDK\CreateContractWithConstructorHostFunction;
+use Soneso\StellarSDK\InvokeHostFunctionOperationBuilder;
+use Soneso\StellarSDK\Soroban\Address;
+use Soneso\StellarSDK\Xdr\XdrSCVal;
+
+$createOp = (new InvokeHostFunctionOperationBuilder(
+    new CreateContractWithConstructorHostFunction(
+        Address::fromAccountId($keyPair->getAccountId()),
+        $wasmHash,
+        [XdrSCVal::forSymbol('MyToken'), XdrSCVal::forU32(8)]  // Constructor args
+    )
+))->build();
+
+// Build, simulate, sign, and send (same pattern)
+```
+
+### Invoke Contract (Low-Level)
+
+Invoke a contract method without using SorobanClient.
+
+```php
+<?php
+use Soneso\StellarSDK\InvokeContractHostFunction;
+use Soneso\StellarSDK\InvokeHostFunctionOperationBuilder;
+use Soneso\StellarSDK\Xdr\XdrSCVal;
+
+$invokeOp = (new InvokeHostFunctionOperationBuilder(
+    new InvokeContractHostFunction(
+        $contractId,
+        'hello',
+        [XdrSCVal::forSymbol('World')]
+    )
+))->build();
+
+// Build transaction
+$tx = (new TransactionBuilder($account))->addOperation($invokeOp)->build();
+
+// Simulate to get resource requirements
+$sim = $server->simulateTransaction(new SimulateTransactionRequest($tx));
+$tx->setSorobanTransactionData($sim->transactionData);
+$tx->addResourceFee($sim->minResourceFee);
+$tx->sign($keyPair, Network::testnet());
+
+// Submit and get result
+$sendResponse = $server->sendTransaction($tx);
+// Poll getTransaction until success, then get result:
+$result = $txResponse->getResultValue();
+```
+
+### Deploy Stellar Asset Contract (SAC)
+
+Wrap a classic Stellar asset as a Soroban token contract.
+
+#### With Asset
+
+```php
+<?php
+use Soneso\StellarSDK\Asset;
+use Soneso\StellarSDK\DeploySACWithAssetHostFunction;
+use Soneso\StellarSDK\InvokeHostFunctionOperationBuilder;
+
 $asset = Asset::createNonNativeAsset('USDC', 'GISSUER...');
+
 $sacOp = (new InvokeHostFunctionOperationBuilder(
     new DeploySACWithAssetHostFunction($asset)
 ))->build();
+
+// Build, simulate, sign, and send
+```
+
+#### With Source Account
+
+```php
+<?php
+use Soneso\StellarSDK\DeploySACWithSourceAccountHostFunction;
+use Soneso\StellarSDK\InvokeHostFunctionOperationBuilder;
+use Soneso\StellarSDK\Soroban\Address;
+
+$sacOp = (new InvokeHostFunctionOperationBuilder(
+    new DeploySACWithSourceAccountHostFunction(
+        Address::fromAccountId($invokerAccountId)
+    )
+))->build();
+
+// Build, simulate, set auth, sign, and send
+$tx->setSorobanAuth($sim->getSorobanAuth());
+```
+
+### Direct Authorization Signing
+
+For advanced auth workflows, sign authorization entries directly.
+
+```php
+<?php
+use Soneso\StellarSDK\Network;
+use Soneso\StellarSDK\Soroban\SorobanAuthorizationEntry;
+
+// Get auth entries from simulation
+$auth = $simulateResponse->getSorobanAuth();
+$latestLedger = $server->getLatestLedger();
+
+foreach ($auth as $entry) {
+    if ($entry instanceof SorobanAuthorizationEntry) {
+        // Set signature expiration (~50 seconds at 5s/ledger)
+        $entry->credentials->addressCredentials->signatureExpirationLedger = 
+            $latestLedger->sequence + 10;
+        
+        // Sign the entry
+        $entry->sign($signerKeyPair, Network::testnet());
+    }
+}
+
+// Set signed auth on transaction
+$transaction->setSorobanAuth($auth);
+```
+
+> **Tip**: Contract IDs must be C-prefixed strkey format. To convert from hex: `StrKey::encodeContractIdHex($hexContractId)`
+
+## Contract Parser
+
+Parse contract bytecode to access specifications, metadata, and environment information without deploying.
+
+### Parse from Bytecode
+
+Parse a local WASM file directly.
+
+```php
+<?php
+use Soneso\StellarSDK\Soroban\SorobanContractParser;
+
+$bytecode = file_get_contents('contract.wasm');
+$contractInfo = SorobanContractParser::parseContractByteCode($bytecode);
+
+// Environment metadata (interface version)
+$envMeta = $contractInfo->envMetaBytes;
+
+// Contract spec (functions, structs, unions)
+foreach ($contractInfo->specEntries as $entry) {
+    // Each entry is an XdrSCSpecEntry
+    echo $entry->type->value . "\n";
+}
+
+// Contract meta (arbitrary metadata)
+$meta = $contractInfo->metaBytes;
+```
+
+### Parse from Network
+
+Load and parse contract info from a deployed contract.
+
+```php
+<?php
+use Soneso\StellarSDK\Soroban\Contract\ContractSpec;
+use Soneso\StellarSDK\Soroban\SorobanServer;
+
+$server = new SorobanServer('https://soroban-testnet.stellar.org');
+
+// By contract ID
+$contractInfo = $server->loadContractInfoForContractId('CCXYZ...');
+
+// By WASM ID
+$contractInfo = $server->loadContractInfoForWasmId($wasmId);
+
+if ($contractInfo !== null) {
+    // Use ContractSpec for type conversions
+    $spec = new ContractSpec($contractInfo->specEntries);
+    $functions = $spec->funcs();
+    
+    foreach ($functions as $func) {
+        echo "Function: " . $func->name . "\n";
+    }
+}
 ```
 
 ## Further Reading
 
-- [Soroban Examples](https://github.com/stellar/soroban-examples) - Official contracts
-- [Soroban Docs](https://developers.stellar.org/docs/smart-contracts) - Protocol details
-- [RPC API Reference](https://developers.stellar.org/docs/data/rpc/api-reference)
-- [SorobanClientTest.php](https://github.com/Soneso/stellar-php-sdk/blob/main/Soneso/StellarSDKTests/SorobanClientTest.php) - Test cases
+- [Soroban Examples](https://github.com/stellar/soroban-examples) — Official example contracts
+- [Soroban Docs](https://developers.stellar.org/docs/smart-contracts) — Protocol details
+- [RPC API Reference](https://developers.stellar.org/docs/data/rpc/api-reference) — Soroban RPC methods
+- [SorobanClientTest.php](https://github.com/Soneso/stellar-php-sdk/blob/main/Soneso/StellarSDKTests/SorobanClientTest.php) — High-level API tests
+- [SorobanAuthTest.php](https://github.com/Soneso/stellar-php-sdk/blob/main/Soneso/StellarSDKTests/SorobanAuthTest.php) — Authorization tests
+- [SorobanAtomicSwapTest.php](https://github.com/Soneso/stellar-php-sdk/blob/main/Soneso/StellarSDKTests/SorobanAtomicSwapTest.php) — Multi-party signing
+- [SorobanParserTest.php](https://github.com/Soneso/stellar-php-sdk/blob/main/Soneso/StellarSDKTests/SorobanParserTest.php) — Contract parsing
 
 ---
 
-[← Back to SDK Usage](sdk-usage.md) | [SEP Protocols →](sep/README.md)
+**Navigation:** [← SDK Usage](sdk-usage.md) | [SEP Protocols →](sep/README.md)
