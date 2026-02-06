@@ -217,7 +217,7 @@ $transaction = (new TransactionBuilder($senderAccount))
     ->addOperation($paymentOp)
     ->build();
 
-// Returns false for muxed accounts — no memo check needed
+// Returns false for muxed accounts, so no memo check needed
 $requiresMemo = $sdk->checkMemoRequired($transaction);
 // $requiresMemo === false
 
@@ -330,7 +330,7 @@ try {
 ```
 
 **Important notes:**
-- Fee bump transactions always return `false` — check the inner transaction before wrapping it
+- Fee bump transactions always return `false`. Check the inner transaction before wrapping it
 - The method only validates memo *presence*, not memo *type* (SEP-29 intentionally omits type validation)
 
 ## Related SEPs

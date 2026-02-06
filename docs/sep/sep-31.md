@@ -24,7 +24,7 @@ See the [SEP-31 specification](https://github.com/stellar/stellar-protocol/blob/
 
 ## Quick Example
 
-This example demonstrates the minimal flow for initiating a cross-border payment, assuming KYC has already been completed via SEP-12:
+This example shows the minimal flow for starting a cross-border payment. It assumes you've already completed KYC via SEP-12:
 
 ```php
 <?php

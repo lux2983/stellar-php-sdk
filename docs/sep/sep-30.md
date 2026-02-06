@@ -20,7 +20,7 @@ See the [SEP-30 specification](https://github.com/stellar/stellar-protocol/blob/
 
 ## Quick Example
 
-This example demonstrates the basic flow of registering an account with a recovery server and obtaining the signer key to add to your Stellar account.
+This example shows the basic flow: register an account with a recovery server, then add the returned signer key to your Stellar account.
 
 ```php
 <?php
