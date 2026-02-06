@@ -233,8 +233,12 @@ if ($info->transferServerSep24 === null) {
 
 ## Related SEPs
 
-- [SEP-02 Federation](sep-02.md) - Uses `FEDERATION_SERVER` from stellar.toml
-- [SEP-10 Authentication](sep-10.md) - Uses `WEB_AUTH_ENDPOINT` and `SIGNING_KEY`
-- [SEP-24 Interactive](sep-24.md) - Uses `TRANSFER_SERVER_SEP0024`
+- [SEP-02 Federation](sep-02.md) - Uses `FEDERATION_SERVER`
+- [SEP-06 Deposit/Withdrawal](sep-06.md) - Uses `TRANSFER_SERVER`
 - [SEP-07 URI Scheme](sep-07.md) - Uses `URI_REQUEST_SIGNING_KEY`
+- [SEP-10 Authentication](sep-10.md) - Uses `WEB_AUTH_ENDPOINT` and `SIGNING_KEY`
+- [SEP-12 KYC](sep-12.md) - Uses `KYC_SERVER`
+- [SEP-24 Interactive](sep-24.md) - Uses `TRANSFER_SERVER_SEP0024`
+- [SEP-31 Cross-Border](sep-31.md) - Uses `DIRECT_PAYMENT_SERVER`
+- [SEP-38 Quotes](sep-38.md) - Uses `ANCHOR_QUOTE_SERVER`
 - [SEP-45 Contract Auth](sep-45.md) - Uses `WEB_AUTH_FOR_CONTRACTS_ENDPOINT` and `WEB_AUTH_CONTRACT_ID`
