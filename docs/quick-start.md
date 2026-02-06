@@ -64,6 +64,8 @@ if ($funded) {
 }
 ```
 
+> **Public network:** FriendBot only works on testnet. On the public network, you need an existing funded account to create new accounts using a `CreateAccountOperation`. See [Getting Started](getting-started.md#create-account-on-public-network) for details.
+
 ## Your First Transaction
 
 Send a payment on the Stellar testnet:
