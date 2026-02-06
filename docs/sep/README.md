@@ -18,10 +18,13 @@ Think of SEPs as the "rules of the road" that let different Stellar applications
 | SEP-06 | Programmatic Deposit and Withdrawal | [sep-06.md](sep-06.md) |
 | SEP-07 | URI Scheme | [sep-07.md](sep-07.md) |
 | SEP-08 | Regulated Assets | [sep-08.md](sep-08.md) |
+| SEP-09 | Standard KYC Fields | [sep-09.md](sep-09.md) |
 | SEP-10 | Web Authentication | [sep-10.md](sep-10.md) |
 | SEP-11 | Transaction Representation (Txrep) | [sep-11.md](sep-11.md) |
 | SEP-12 | KYC API | [sep-12.md](sep-12.md) |
+| SEP-23 | StrKey Encoding | [sep-23.md](sep-23.md) |
 | SEP-24 | Interactive Deposit and Withdrawal | [sep-24.md](sep-24.md) |
+| SEP-29 | Account Memo Requirements | [sep-29.md](sep-29.md) |
 | SEP-30 | Account Recovery | [sep-30.md](sep-30.md) |
 | SEP-31 | Cross-Border Payments | [sep-31.md](sep-31.md) |
 | SEP-38 | Anchor RFQ API | [sep-38.md](sep-38.md) |
@@ -67,7 +70,10 @@ The issuer's approval server reviews each transaction and either approves, rejec
 | Human-readable addresses (email-style) | SEP-02 |
 | Deterministic key generation from mnemonics | SEP-05 |
 | Payment requests via URI | SEP-07 |
+| Standard KYC data fields | SEP-09 |
 | Human-readable transaction format | SEP-11 |
+| Address encoding and validation | SEP-23 |
+| Require memo on incoming payments | SEP-29 |
 | Account recovery via custodians | SEP-30 |
 | Message signing and verification | SEP-53 |
 | Soroban contract authentication | SEP-45 |
