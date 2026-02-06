@@ -82,6 +82,8 @@ A **transaction** groups one or more **operations** that execute atomically. Com
 
 ### Generate a Random KeyPair
 
+Create a new wallet with a random keypair. The account ID is your public address; the secret seed is your private key for signing transactions.
+
 ```php
 <?php
 
@@ -95,6 +97,8 @@ $secretSeed = $keyPair->getSecretSeed(); // SAV76USXIJOB... (private)
 
 ### Import from Secret Seed
 
+If you already have a secret seed (from a backup or another wallet), you can restore the full keypair. This lets you sign transactions.
+
 ```php
 <?php
 
@@ -105,6 +109,8 @@ $keyPair = KeyPair::fromSeed("SDJHRQF4GCMIIKAAAQ6IHY42X73FQFLHUULAPSKKD4DFDM7UXW
 ```
 
 ### Import from Account ID
+
+You can create a keypair from just an account ID (public key). This is useful for verifying signatures or specifying destinations, but you can't sign transactions without the secret seed.
 
 ```php
 <?php
@@ -146,6 +152,8 @@ $keyPair = KeyPair::fromMnemonic($mnemonic, 0);
 
 ### Fund on Testnet
 
+On testnet, FriendBot gives you 10,000 free test XLM to experiment with. This is the easiest way to get started.
+
 ```php
 <?php
 
@@ -157,6 +165,8 @@ $funded = FriendBot::fundTestAccount($keyPair->getAccountId());
 ```
 
 ### Create Account on Public Network
+
+On the public network, there's no FriendBot. You need an existing funded account to create new accounts using the `CreateAccountOperation`. The new account receives a starting balance from the source account.
 
 ```php
 <?php
@@ -193,6 +203,8 @@ if ($response->isSuccessful()) {
 ```
 
 ### Query Account Data
+
+Load an account from the network to check its balances, sequence number, and signers. Always verify an account exists before sending payments to it.
 
 ```php
 <?php
@@ -253,6 +265,8 @@ $transaction = (new TransactionBuilder($sourceAccount))
 
 ### Adding Operations
 
+Each operation type has its own builder class. Build the operations first, then add them to the transaction. Operations execute in order.
+
 ```php
 <?php
 
@@ -306,6 +320,8 @@ if ($response->isSuccessful()) {
 
 ### Complete Payment Example
 
+Here's a full example that sends 100 XLM on testnet. It loads the sender's account, builds a payment, signs it, and submits to the network.
+
 ```php
 <?php
 
@@ -341,6 +357,8 @@ if ($response->isSuccessful()) {
 
 ## Connecting to Networks
 
+The SDK connects to Horizon servers to query account data and submit transactions. Use testnet for development, public network for production.
+
 ```php
 <?php
 
@@ -362,6 +380,8 @@ Soroban is Stellar's smart contract platform. To interact with smart contracts, 
 
 ### Connecting to Soroban RPC
 
+Create a `SorobanServer` instance to interact with the Soroban RPC endpoint.
+
 ```php
 <?php
 
@@ -375,6 +395,8 @@ $server = new SorobanServer("https://soroban.stellar.org");
 ```
 
 ### Health Check
+
+Check if the Soroban RPC server is running and see which ledger range it has available.
 
 ```php
 <?php
@@ -394,6 +416,8 @@ if ($health->getStatus() === GetHealthResponse::HEALTHY) {
 ```
 
 ### Latest Ledger Info
+
+Get the current ledger sequence and protocol version. Useful for checking network status.
 
 ```php
 <?php
@@ -415,6 +439,8 @@ For deploying contracts, invoking functions, and handling Soroban transactions, 
 ## Error Handling
 
 ### Horizon Request Exceptions
+
+Network requests can fail for many reasons — invalid account IDs, network issues, or server errors. Catch `HorizonRequestException` to handle these gracefully.
 
 ```php
 <?php
@@ -438,6 +464,8 @@ try {
 ```
 
 ### Transaction Failures
+
+When a transaction fails, the error response contains result codes explaining what went wrong — both at the transaction level and for each operation.
 
 ```php
 <?php
