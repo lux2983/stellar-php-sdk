@@ -16,7 +16,7 @@ Quotes come in two types:
 
 SEP-38 is used alongside SEP-6, SEP-24, or SEP-31 for the actual asset transfer.
 
-## Quick Example
+## Quick example
 
 This example shows how to connect to an anchor's quote service and fetch available assets and indicative prices:
 
@@ -47,11 +47,11 @@ foreach ($prices->buyAssets as $buyAsset) {
 }
 ```
 
-## Detailed Usage
+## Detailed usage
 
-### Creating the Service
+### Creating the service
 
-The `QuoteService` class provides methods for all SEP-38 endpoints. You can create an instance either by domain discovery or with a direct URL.
+The `QuoteService` class has methods for all SEP-38 endpoints. You can create an instance by domain discovery or with a direct URL.
 
 **From stellar.toml (recommended):**
 
@@ -91,7 +91,7 @@ $httpClient = new Client(['timeout' => 30]);
 $quoteService = QuoteService::fromDomain("anchor.example.com", $httpClient);
 ```
 
-### Asset Identification Format
+### Asset identification format
 
 SEP-38 uses a specific format for identifying assets in requests and responses:
 
@@ -100,7 +100,7 @@ SEP-38 uses a specific format for identifying assets in requests and responses:
 | Stellar asset | `stellar:CODE:ISSUER` | `stellar:USDC:GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN` |
 | Fiat currency | `iso4217:CODE` | `iso4217:USD` |
 
-### Getting Available Assets (GET /info)
+### Getting available assets (GET /info)
 
 The `info()` method returns all Stellar and off-chain assets available for trading, along with their supported delivery methods and country restrictions:
 
@@ -145,7 +145,7 @@ foreach ($info->assets as $asset) {
 }
 ```
 
-### Getting Indicative Prices (GET /prices)
+### Getting indicative prices (GET /prices)
 
 The `prices()` method returns indicative (non-binding) exchange rates for multiple assets. Use this to show users what they can receive for a given amount:
 
@@ -196,7 +196,7 @@ foreach ($prices->buyAssets as $buyAsset) {
 }
 ```
 
-### Getting a Price for a Specific Pair (GET /price)
+### Getting a price for a specific pair (GET /price)
 
 The `price()` method returns an indicative price for a specific asset pair with detailed fee information. You must provide either `sellAmount` or `buyAmount`, but not both:
 
@@ -305,7 +305,7 @@ if ($price->fee->details !== null) {
 }
 ```
 
-### Requesting a Firm Quote (POST /quote)
+### Requesting a firm quote (POST /quote)
 
 Firm quotes lock in a guaranteed price for a limited time. Authentication is **required** for this endpoint. Use the `SEP38PostQuoteRequest` class to build your request:
 
@@ -400,7 +400,7 @@ if ($quote->buyDeliveryMethod !== null) {
 }
 ```
 
-### Retrieving a Previous Quote (GET /quote/:id)
+### Retrieving a previous quote (GET /quote/:id)
 
 Use `getQuote()` to retrieve a previously-created firm quote by its ID. This is useful for checking the quote status or retrieving details after creation. Authentication is **required**:
 
@@ -421,7 +421,7 @@ echo "Expires at: " . $quote->expiresAt->format('Y-m-d H:i:s') . "\n";
 echo "Still valid: " . ($quote->expiresAt > new DateTime() ? "Yes" : "No") . "\n";
 ```
 
-## Price Formulas
+## Price formulas
 
 The SEP-38 spec defines these relationships between price, amounts, and fees:
 
@@ -439,7 +439,7 @@ When the fee is in the buy asset:
 sell_amount = price * (buy_amount + fee)
 ```
 
-## Error Handling
+## Error handling
 
 The SDK provides specific exception classes for different error scenarios. Always wrap quote service calls in try-catch blocks for production use:
 
@@ -489,7 +489,7 @@ try {
 }
 ```
 
-### Exception Reference
+### Exception reference
 
 | Exception | HTTP Status | Common Causes | Solution |
 |-----------|-------------|---------------|----------|
@@ -499,21 +499,21 @@ try {
 | `SEP38NotFoundException` | 404 | Quote ID doesn't exist (for `getQuote`) | Verify quote ID; it may have expired and been removed |
 | `SEP38UnknownResponseException` | Other | Server error or unexpected response | Check anchor status; retry later |
 
-## SDK Classes Reference
+## SDK classes reference
 
-### Service Class
+### Service class
 
 | Class | Description |
 |-------|-------------|
 | `QuoteService` | Main service class with methods: `info()`, `prices()`, `price()`, `postQuote()`, `getQuote()` |
 
-### Request Classes
+### Request classes
 
 | Class | Description |
 |-------|-------------|
 | `SEP38PostQuoteRequest` | Request body for creating firm quotes via `postQuote()` |
 
-### Response Classes
+### Response classes
 
 | Class | Description |
 |-------|-------------|
@@ -522,7 +522,7 @@ try {
 | `SEP38PriceResponse` | Response from `price()` containing indicative price for a single pair |
 | `SEP38QuoteResponse` | Response from `postQuote()` and `getQuote()` containing firm quote details |
 
-### Model Classes
+### Model classes
 
 | Class | Description |
 |-------|-------------|
@@ -534,7 +534,7 @@ try {
 | `SEP38SellDeliveryMethod` | Method for delivering off-chain assets to the anchor |
 | `SEP38BuyDeliveryMethod` | Method for receiving off-chain assets from the anchor |
 
-### Exception Classes
+### Exception classes
 
 | Class | Description |
 |-------|-------------|

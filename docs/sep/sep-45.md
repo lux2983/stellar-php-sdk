@@ -18,7 +18,7 @@ Use SEP-45 when you need to:
 
 Services supporting all account types should implement both protocols.
 
-### How It Works
+### How it works
 
 1. Client requests a challenge from the server
 2. Server returns authorization entries calling `web_auth_verify` on its web-auth contract
@@ -27,9 +27,9 @@ Services supporting all account types should implement both protocols.
 5. Server simulates the transaction — this invokes the client contract's `__check_auth`
 6. If `__check_auth` succeeds, server returns a JWT token
 
-## Quick Example
+## Quick example
 
-The simplest way to authenticate is using the `jwtToken()` method, which handles the entire flow automatically. This example loads configuration from the anchor's stellar.toml file.
+The `jwtToken()` method handles the entire flow automatically. This example loads configuration from the anchor's stellar.toml file.
 
 ```php
 <?php
@@ -67,11 +67,11 @@ Before using SEP-45, ensure:
 
 3. **Signer Keypairs**: You need the secret keys for the signers registered in your contract's `__check_auth` implementation
 
-## Creating the Service
+## Creating the service
 
-### From stellar.toml (Recommended)
+### From stellar.toml (recommended)
 
-The `fromDomain()` factory method automatically loads configuration from the anchor's stellar.toml file. This is the recommended approach as it ensures you're using the correct endpoint and contract information.
+The `fromDomain()` factory method loads configuration from the anchor's stellar.toml file. This is the recommended approach because it uses the correct endpoint and contract information.
 
 ```php
 <?php
@@ -82,9 +82,9 @@ use Soneso\StellarSDK\Network;
 $webAuth = WebAuthForContracts::fromDomain("anchor.example.com", Network::testnet());
 ```
 
-### Manual Configuration
+### Manual configuration
 
-If you prefer not to load from stellar.toml, you can provide all configuration values directly. This is useful for testing or when you have the configuration cached.
+You can also provide all configuration values directly. This is useful for testing or when you have the configuration cached.
 
 ```php
 <?php
@@ -103,7 +103,7 @@ $webAuth = new WebAuthForContracts(
 
 ### Custom Soroban RPC URL
 
-By default, the SDK uses the standard Soroban RPC endpoints (`soroban-testnet.stellar.org` for testnet, `soroban.stellar.org` for pubnet). You can specify a custom URL if you're using a private RPC server.
+By default, the SDK uses the standard Soroban RPC endpoints (`soroban-testnet.stellar.org` for testnet, `soroban.stellar.org` for pubnet). You can specify a custom URL if you use a private RPC server.
 
 ```php
 <?php
@@ -122,7 +122,7 @@ $webAuth = new WebAuthForContracts(
 );
 ```
 
-## Basic Authentication
+## Basic authentication
 
 The `jwtToken()` method executes the complete SEP-45 flow: requesting the challenge, validating entries, signing with your keypairs, and submitting for a JWT.
 
@@ -140,11 +140,11 @@ $webAuth = WebAuthForContracts::fromDomain("anchor.example.com", Network::testne
 $jwtToken = $webAuth->jwtToken($contractId, [$signer]);
 ```
 
-## Signature Expiration
+## Signature expiration
 
-Signatures include an expiration ledger for replay protection. Per SEP-45, this should be set to a near-future ledger to limit the window for potential replay attacks.
+Signatures include an expiration ledger for replay protection. Per SEP-45, this should be set to a near-future ledger to limit the replay window.
 
-### Automatic Expiration (Default)
+### Automatic expiration (default)
 
 When you don't specify an expiration ledger, the SDK automatically fetches the current ledger from Soroban RPC and sets expiration to current ledger + 10 (~50-60 seconds).
 
@@ -161,9 +161,9 @@ $webAuth = WebAuthForContracts::fromDomain("anchor.example.com", Network::testne
 $jwtToken = $webAuth->jwtToken($contractId, [$signer]);
 ```
 
-### Custom Expiration
+### Custom expiration
 
-For specific requirements, you can set a custom expiration ledger. This is useful when you need more control over the signature validity window.
+You can also set a custom expiration ledger when you need more control over the signature validity window.
 
 ```php
 <?php
@@ -185,7 +185,7 @@ $jwtToken = $webAuth->jwtToken(
 );
 ```
 
-## Contracts Without Signature Requirements
+## Contracts without signature requirements
 
 Some contracts implement `__check_auth` without requiring signature verification (e.g., contracts using other authorization mechanisms). Per SEP-45, client signatures are optional in such cases.
 
@@ -203,11 +203,11 @@ $jwtToken = $webAuth->jwtToken($contractId, []);
 
 **Note:** When the signers array is empty, the SDK skips the Soroban RPC call since no signature expiration is needed. This only works if both the anchor and your contract support signature-less authentication.
 
-## Client Domain Verification
+## Client domain verification
 
-Non-custodial wallets can prove their domain to the anchor. This allows the anchor to attribute requests to a specific wallet application. Your domain needs a stellar.toml with a `SIGNING_KEY`.
+Non-custodial wallets can prove their domain to the anchor. This lets the anchor attribute requests to a specific wallet application. Your domain needs a stellar.toml with a `SIGNING_KEY`.
 
-### Local Signing
+### Local signing
 
 When you have direct access to the client domain's signing key, you can sign locally.
 
@@ -235,9 +235,9 @@ $jwtToken = $webAuth->jwtToken(
 );
 ```
 
-### Remote Signing via Callback
+### Remote signing via callback
 
-If the client domain signing key is on a remote server, use a callback function. The callback receives a `SorobanAuthorizationEntry` and must return the signed entry.
+If the client domain signing key is on a remote server, use a callback function. The callback receives a `SorobanAuthorizationEntry` and returns the signed entry.
 
 ```php
 <?php
@@ -278,9 +278,9 @@ $jwtToken = $webAuth->jwtToken(
 );
 ```
 
-## Step-by-Step Authentication
+## Step-by-step authentication
 
-For more control over the authentication process, you can execute each step individually. This is useful for debugging or when you need to customize the flow.
+For more control, you can execute each step individually. This is useful for debugging or when you need to customize the flow.
 
 ```php
 <?php
@@ -331,7 +331,7 @@ try {
 }
 ```
 
-## Request Format Configuration
+## Request format configuration
 
 The SDK supports both `application/x-www-form-urlencoded` and `application/json` when submitting signed challenges. Form URL encoding is used by default for broader compatibility.
 
@@ -349,9 +349,9 @@ $webAuth->setUseFormUrlEncoded(false);
 $jwtToken = $webAuth->jwtToken($contractId, [$signer]);
 ```
 
-## Error Handling
+## Error handling
 
-The SDK provides specific exception types for different failure scenarios. Catching these allows you to provide appropriate user feedback and take corrective action.
+The SDK has specific exception types for different failure scenarios. Catching these lets you provide appropriate user feedback and take corrective action.
 
 ```php
 <?php
@@ -426,7 +426,7 @@ try {
 }
 ```
 
-### Common Issues
+### Common issues
 
 | Error | Cause | Solution |
 |-------|-------|----------|
@@ -436,9 +436,9 @@ try {
 | `ContractChallengeValidationErrorInvalidNetworkPassphrase` | Wrong network | Check you're using testnet vs pubnet correctly |
 | `ContractChallengeValidationErrorInvalidServerSignature` | Invalid server signature | Server may be compromised or misconfigured |
 
-## Security Considerations
+## Security considerations
 
-The SDK performs several critical security validations automatically:
+The SDK performs these security validations automatically:
 
 1. **Contract Address Validation**: Verifies `contract_address` in all authorization entries matches `WEB_AUTH_CONTRACT_ID` from stellar.toml
 
@@ -456,7 +456,7 @@ The SDK performs several critical security validations automatically:
 
 **JWT Token Security**: Store JWT tokens securely. Never expose them in logs, URLs, or insecure storage. Use HTTPS for all requests.
 
-## Using the JWT Token
+## Using the JWT token
 
 Once authenticated, include the JWT token in the `Authorization` header when making requests to protected SEP services.
 
@@ -480,7 +480,7 @@ $response = $httpClient->get('https://anchor.example.com/kyc/customer', [
 ]);
 ```
 
-## Network Support
+## Network support
 
 The SDK supports both testnet and public (mainnet) networks. Use the appropriate network constant when creating the service.
 
@@ -497,13 +497,13 @@ $webAuth = WebAuthForContracts::fromDomain("testnet.anchor.com", Network::testne
 $webAuth = WebAuthForContracts::fromDomain("anchor.com", Network::public());
 ```
 
-## Reference Contracts
+## Reference contracts
 
 For SEP-45 authentication, the client contract must implement `__check_auth` to define authorization rules. The Stellar Anchor Platform provides a reference implementation:
 
 - [Account Contract](https://github.com/stellar/anchor-platform/tree/main/soroban/contracts/account) - A sample client contract that implements `__check_auth` with Ed25519 signature verification
 
-## Extended Documentation
+## Extended documentation
 
 For more detailed examples including step-by-step authentication flows and advanced usage patterns, see the [SEP-45 examples documentation](https://github.com/Soneso/stellar-php-sdk/blob/main/examples/sep-0045-webauth-contracts.md).
 

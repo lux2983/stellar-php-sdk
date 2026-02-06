@@ -13,9 +13,9 @@ SEP-53 defines how to sign and verify messages with Stellar keypairs. Use it whe
 
 The protocol adds a prefix (`"Stellar Signed Message:\n"`) before hashing, which prevents signed messages from being confused with transaction signatures.
 
-## Quick Example
+## Quick example
 
-Sign a message and verify the signature with just a few lines of code:
+Sign a message and verify the signature:
 
 ```php
 <?php declare(strict_types=1);
@@ -31,9 +31,9 @@ $isValid = $keyPair->verifyMessage("I agree to the terms of service", $signature
 echo $isValid ? "Valid\n" : "Invalid\n";
 ```
 
-## Detailed Usage
+## Detailed usage
 
-### Signing Messages
+### Signing messages
 
 Sign a message and encode the signature for transmission. The raw signature is 64 bytes, so you'll typically encode it as base64 or hex:
 
@@ -61,7 +61,7 @@ $hexSignature = bin2hex($signature);
 echo "Signature (hex): " . $hexSignature . "\n";
 ```
 
-### Verifying Messages
+### Verifying messages
 
 Verify a signature using only the public key. This is typically done server-side after receiving a signed message from a client:
 
@@ -86,7 +86,7 @@ if ($isValid) {
 }
 ```
 
-### Verifying Hex-Encoded Signatures
+### Verifying hex-encoded signatures
 
 If the signature was transmitted as a hex string, decode it with `hex2bin()` before verification:
 
@@ -104,9 +104,9 @@ $signature = hex2bin($hexSignature);
 $isValid = $publicKey->verifyMessage($message, $signature);
 ```
 
-### Signing Binary Data
+### Signing binary data
 
-The message doesn't have to be text—you can sign any binary data such as file contents:
+The message doesn't have to be text. You can sign any binary data such as file contents:
 
 ```php
 <?php declare(strict_types=1);
@@ -125,7 +125,7 @@ if ($signature !== null) {
 }
 ```
 
-### Authentication Flow Example
+### Authentication flow example
 
 A complete authentication flow where the server generates a challenge and the client proves key ownership:
 
@@ -162,9 +162,9 @@ if ($publicKey->verifyMessage($response['challenge'], $signature)) {
 }
 ```
 
-## Error Handling
+## Error handling
 
-### Signing Without a Private Key
+### Signing without a private key
 
 Attempting to sign with a public-key-only keypair throws a `TypeError` because the SDK uses `strict_types=1`:
 
@@ -184,7 +184,7 @@ try {
 }
 ```
 
-### Handling Null Signatures
+### Handling null signatures
 
 The `signMessage()` method can return `null` if signing fails due to cryptographic errors. Always check for null:
 
@@ -205,7 +205,7 @@ if ($signature === null) {
 $base64Signature = base64_encode($signature);
 ```
 
-### Common Verification Failures
+### Common verification failures
 
 When verification fails, several causes are possible:
 
@@ -233,7 +233,7 @@ if (!$publicKey->verifyMessage($message, $signature)) {
 echo "Signature verified successfully\n";
 ```
 
-## Protocol Details
+## Protocol details
 
 SEP-53 signing works like this:
 
@@ -249,11 +249,11 @@ valid = Ed25519Verify(publicKey, SHA256("Stellar Signed Message:\n" + message), 
 
 The `"Stellar Signed Message:\n"` prefix provides domain separation. A signed message can never be confused with a Stellar transaction signature.
 
-## Test Vectors
+## Test vectors
 
 Use these official test vectors from the SEP-53 specification to validate your implementation:
 
-### ASCII Message
+### ASCII message
 
 ```php
 <?php declare(strict_types=1);
@@ -281,7 +281,7 @@ assert($hexSignature === $expectedHex, "Hex signature mismatch");
 echo "ASCII test vector passed\n";
 ```
 
-### Japanese (UTF-8) Message
+### Japanese (UTF-8) message
 
 ```php
 <?php declare(strict_types=1);
@@ -303,7 +303,7 @@ assert(bin2hex($signature) === $expectedHex);
 echo "Japanese test vector passed\n";
 ```
 
-### Binary Data Message
+### Binary data message
 
 ```php
 <?php declare(strict_types=1);
@@ -327,13 +327,13 @@ assert(bin2hex($signature) === $expectedHex);
 echo "Binary test vector passed\n";
 ```
 
-## Security Notes
+## Security notes
 
-### Display Messages Before Signing
+### Display messages before signing
 
 Always show users the full message before signing. Never auto-sign without user review. This prevents phishing where users sign malicious content.
 
-### Key Ownership vs Account Control
+### Key ownership vs account control
 
 A valid signature proves the signer has the private key. It doesn't prove they control the account:
 
@@ -343,7 +343,7 @@ A valid signature proves the signer has the private key. It doesn't prove they c
 
 For critical operations, check the account's current state on-chain.
 
-### Signature Encoding
+### Signature encoding
 
 SEP-53 doesn't specify an encoding format. Common choices:
 
@@ -354,9 +354,9 @@ SEP-53 doesn't specify an encoding format. Common choices:
 
 Pick one and document it. The raw signature is always 64 bytes.
 
-## Cross-SDK Compatibility
+## Cross-SDK compatibility
 
-SEP-53 signatures work across all Stellar SDKs. A signature created in Java, Python, or Flutter can be verified in PHP and vice versa:
+SEP-53 signatures work across all Stellar SDKs. A signature created in Java, Python, or Flutter can be verified in PHP, and vice versa:
 
 ```php
 <?php declare(strict_types=1);
